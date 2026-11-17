@@ -11,6 +11,7 @@ import { createOfficialReader, extractPdf, readDocument } from './catalog.fetch'
 import { captureDocument, editDraft, generateVersion, publishVersion } from './catalog.repo';
 import { descriptionSchema, metadataSchema, officialSourceUrl } from './catalog.types';
 import { wakeCatalog } from './catalog.job';
+import { hasSearchKey } from './catalog.search';
 
 const router=Router();
 const upload=multer({storage:multer.memoryStorage(),limits:{files:1,fileSize:8*1024*1024,fields:8}});
@@ -20,10 +21,12 @@ router.use((_req,res,next)=>{res.set('Cache-Control','no-store');next();});
 router.get('/',async (_req,res)=>{
   const db=await database();
   const [sources,runs,imports]=await Promise.all([
-    db.query(`select id,label,url,kind,enabled,interval_minutes,next_check_at,last_checked_at,last_success_at,
+    db.query(`select id,label,
+      case when kind='official_search' then 'https://www.india.gov.in/directory/web-directory/state-uts' else url end as url,
+      kind,enabled,interval_minutes,next_check_at,last_checked_at,last_success_at,
       case when kind='official_search' and not $1::boolean and $2::boolean then
-        'Set SCHEME_SEARCH_API_KEY on the server or scheduled worker to enable discovery.' else last_error end as last_error
-      from public.scheme_catalog_sources order by id`,[Boolean(env.SCHEME_SEARCH_API_KEY),env.SCHEME_CATALOG_ENABLED]),
+        'Set TAVILY_API_KEY or SCHEME_SEARCH_API_KEY on the server or scheduled worker to enable discovery.' else last_error end as last_error
+      from public.scheme_catalog_sources order by id`,[hasSearchKey(),env.SCHEME_CATALOG_ENABLED]),
     db.query(`select * from public.scheme_catalog_runs order by started_at desc limit 30`),
     db.query(`select i.id,i.scheme_id,i.last_fetched_at,i.published_version,v.id as version_id,v.original_title,v.metadata,v.status,v.error,v.fetched_at
       from public.scheme_catalog_imports i join public.scheme_catalog_versions v on v.id=i.current_version

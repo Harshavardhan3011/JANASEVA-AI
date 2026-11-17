@@ -3,7 +3,7 @@ import { database } from '../../config/db';
 import { env } from '../../config/env';
 import { createOfficialReader, discoverPib, readDocument } from './catalog.fetch';
 import { captureDocument, generateVersion, publishVersion } from './catalog.repo';
-import { searchMetadata, searchOfficialSchemes } from './catalog.search';
+import { hasSearchKey, searchMetadata, searchOfficialSchemes } from './catalog.search';
 import { metadataSchema } from './catalog.types';
 
 interface CatalogSource {
@@ -26,7 +26,7 @@ async function claim() {
       where enabled and (kind<>'official_search' or $2::boolean) and next_check_at<=now() and (lease_until is null or lease_until<now())
       order by next_check_at,id for update skip locked limit 1)
     returning id,url,kind,settings,lease_id,interval_minutes
-  `,[lease,Boolean(env.SCHEME_SEARCH_API_KEY)]);
+  `,[lease,hasSearchKey()]);
   return source;
 }
 

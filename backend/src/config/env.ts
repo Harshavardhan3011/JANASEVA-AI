@@ -19,6 +19,7 @@ export const env = z.object({
   SCHEME_MONITOR_ENABLED: z.enum(['true','false']).default('true').transform(value => value === 'true'),
   SCHEME_CATALOG_ENABLED: z.enum(['true','false']).default('true').transform(value => value==='true'),
   SCHEME_CATALOG_AUTO_PUBLISH: z.enum(['true','false']).default('true').transform(value => value==='true'),
+  TAVILY_API_KEY: z.string().trim().default(''),
   SCHEME_SEARCH_API_KEY: z.string().trim().default(''),
   SCHEME_SYNC_WORKER: z.enum(['true','false']).default('false').transform(value=>value==='true'),
   LLM_PROVIDER: z.enum(['gemini', 'openai']).default('gemini'),

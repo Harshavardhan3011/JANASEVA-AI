@@ -27,6 +27,7 @@ test('background import, validated publication, AP review, deduplication and fai
   process.env.SUPABASE_SERVICE_ROLE_KEY='';
   process.env.SCHEME_CATALOG_ENABLED='true';
   process.env.SCHEME_SEARCH_API_KEY='';
+  process.env.TAVILY_API_KEY='';
   process.env.SCHEME_CATALOG_AUTO_PUBLISH='true';
   process.env.LLM_PROVIDER='openai';
   process.env.LLM_API_KEY='controlled-test-fixture';
@@ -43,6 +44,16 @@ test('background import, validated publication, AP review, deduplication and fai
   const makeClaim=(quote:string)=>({text:quote,quote});
   globalThis.fetch=async(input,init)=>{
     const url=new URL(input instanceof Request ? input.url : input.toString());
+    if (url.hostname==='api.tavily.com') {
+      assert.equal(url.pathname,'/search');
+      assert.equal(init?.method,'POST');
+      assert.equal(new Headers(init?.headers).get('Authorization'),'Bearer fixture-tavily-key');
+      const query=JSON.parse(String(init?.body));
+      assert.equal(query.search_depth,'basic');
+      assert.equal(query.auto_parameters,false);
+      assert.deepEqual(query.include_domains,['karnataka.gov.in','www.karnataka.gov.in']);
+      return Response.json({results:[{url:untrustedUrl},{url:stateUrl}]});
+    }
     if (url.hostname==='api.search.brave.com') {
       assert.equal(new Headers(init?.headers).get('X-Subscription-Token'),'fixture-search-key');
       const query=url.searchParams.get('q') || '';
@@ -231,11 +242,13 @@ test('background import, validated publication, AP review, deduplication and fai
     const beforeRepeat=generations;
     await markDue();await runCatalogSync('test-repeat-search');
     assert.equal(generations,beforeRepeat,'rediscovered official documents skip AI when unchanged');
+    env.TAVILY_API_KEY='fixture-tavily-key';
     const stateCursor=searchPublishers.findIndex(publisher=>publisher.host==='karnataka.gov.in');
     await db.query("update public.scheme_catalog_sources set settings=$1 where kind='official_search'",[JSON.stringify({cursor:stateCursor})]);
     await markDue();await runCatalogSync('test-state-discovery');
     const {data:withState}=await request('/schemes');
     assert.ok(withState.some((entry:any)=>entry.scheme_name==='Farm Assistance Scheme' && entry.coverage_state==='Karnataka'));
+    assert.equal(searchQueries.length,3,'Tavily is used without also calling Brave');
     assert.ok(after.runs.some((run:any)=>run.trigger_kind==='test-updated' && run.changed===1 && run.published===1));
   } finally {
     await stop();
