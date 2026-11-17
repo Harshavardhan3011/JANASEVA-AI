@@ -1,0 +1,17 @@
+export const schemeSections=[
+  ['overview','Overview'],['whoCanApply','Who can apply'],['benefits','Benefits'],['eligibility','Eligibility'],
+  ['documents','Documents'],['applicationSteps','How to Apply'],['dates','Important Dates'],['contacts','Official contacts'],
+] as const;
+export type Section=typeof schemeSections[number][0];
+export interface Claim { text:string; quote:string }
+export type SchemeStatus='unknown'|'open'|'closed';
+export type Description=Record<Section,Claim[]> & {
+  status:SchemeStatus; statusEvidence:Claim|null; reviewIssues:string[];
+};
+export const unavailable='Not specified in the official source.';
+export const describeStatus=(status:SchemeStatus)=>({unknown:'Status not specified',open:'Applications open',closed:'Closed'})[status];
+export const dateLabel=(date:string)=>new Intl.DateTimeFormat('en-IN',{dateStyle:'medium',timeZone:'Asia/Kolkata'}).format(new Date(date));
+export const emptyDescription=():Description=>({
+  overview:[],whoCanApply:[],benefits:[],eligibility:[],documents:[],applicationSteps:[],dates:[],contacts:[],
+  status:'unknown',statusEvidence:null,reviewIssues:[],
+});

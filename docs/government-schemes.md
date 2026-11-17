@@ -1,0 +1,41 @@
+# Government Schemes publishing
+
+The public catalog is available at `/schemes`. Each existing and newly published scheme has a stable `/schemes/:id` page. The public API returns only the published version. Listing and detail responses use `Cache-Control: no-store` so the Vercel-hosted frontend can read new records without a frontend deployment.
+
+## Sources and access
+
+| Source | Access and behavior | Default interval |
+| --- | --- | --- |
+| [Press Information Bureau](https://www.pib.gov.in/ViewRss.aspx?lang=2&reg=3) | Official RSS for discovery. The worker fetches matching release pages through the allowlist and robots policy. Releases that do not clearly define a new scheme wait for review. | 15 minutes |
+| [Andhra Pradesh NTR Bharosa pension order](https://sspensions.ap.gov.in/SSP/Documents/GO%20MS%2043%2013.06.2024.pdf) | Downloadable government PDF. The publisher's [About page](https://sspensions.ap.gov.in/SSP/Home/About) includes older amounts, so the import carries an explicit reconciliation note and requires review. | 15 minutes |
+| [myScheme](https://search.myscheme.gov.in/terms-of-use) | Evaluated as a future source. Its site prohibits automated access without written authorization. [NeGD identifies API Setu as the authorized integration path](https://cdn.digitalindiacorporation.in/wp-content/uploads/2025/01/Ask-Our-Experts_-QA-myScheme.pdf). Obtain access and the supported API contract before adding a connector. | Approval pending |
+
+No webhook was verified for the two enabled sources. The live fetcher checks robots directives at each allowlisted origin in a run, allows ordinary 404/410 absence of a robots file, bounds downloads and timeouts, and revalidates redirects. PM-KISAN's public PDF endpoint was also tested from the local runtime and failed TLS certificate verification, so it is available as a manual PDF source rather than an enabled poller. When automated access is unavailable, an authorized reviewer can upload a public official PDF and provide the original source URL. The source upload stays under review until verified.
+
+## Review and sync
+
+1. Sign in, then open **Schemes → Manage schemes**. For local setup retrieve the existing reviewer key with `npm run monitor:key`. Production uses `SCHEME_MONITOR_KEY`.
+2. Paste an official URL. Enter its scheme name, authority, government scheme ID if provided, state and category. Attach the official PDF when needed. **Import for review** captures the source and attempts structured generation using `LLM_PROVIDER` and `LLM_API_KEY`.
+3. Open the imported version. Compare its original source text, cited claims, and any changes to the published version. Edit as needed and confirm verification before publishing. An empty section renders “Not specified in the official source.”
+4. **Sync now** makes enabled sources due immediately. **Sources and sync runs** shows the last check and last successful sync, each source's interval, and added, updated, skipped, failed and published counts. Adjust intervals and pause sources there.
+
+An unchanged source skips AI generation. A failed generation keeps the captured version and offers **Retry AI generation**. Automatic retries use backoff. Scheduled publication requires an authoritative source, readable evidence, a validated extractive description, and benefit and eligibility evidence. Plain-language paraphrases and conflicting or incomplete information go to the reviewer. The model sees delimited source content and returns validated JSON. Important numbers must occur in the exact cited text. Closure requires explicit official wording and is never inferred from a deadline. Publishing switches a database pointer in a transaction and keeps old versions. Existing guided applications continue to use their existing workflow.
+
+## Production setup
+
+The existing project describes a static Vercel frontend, a Node/Docker API (Render or a compatible host), and Supabase Postgres. The local source copy has no linked production project or live credential set.
+
+1. On the intended environment, set the hosted `DATABASE_URL` and run `npm run db:migrate`. This applies `database/migrations/006_scheme_publications.sql` and seeds the two configured sources. The default local database applies it on startup.
+2. Configure the backend's existing variables and supply `SCHEME_MONITOR_KEY`, `LLM_PROVIDER`, and `LLM_API_KEY`. Deploy the API Docker image and the Vite frontend with the intended `VITE_API_URL`. Keep keys only in backend or worker environment variables.
+3. For an always-on Node service, the in-process scheduler checks for due sources each minute, including when no visitors are present. For a sleeping or serverless API, deploy the independent `Dockerfile.scheme-sync` as a scheduled job against the same database. `render-scheme-sync.yaml` is a Render Blueprint reference. Run its container every 15 minutes and set `SCHEME_CATALOG_ENABLED=false` on the web API if the independent job handles scheduled checks. The job has no HTTP endpoint and does not need web signing or Storage keys. The scheduler's startup lag and cron frequency govern the effective cadence jointly with the per-source interval.
+4. From the deployed worker, run `node backend/dist/run-scheme-sync.js` for the next batch of due checks, or run `npm run schemes:sync` from a configured source checkout with backend dependencies installed. The hosted database coordinates worker leases and persists next-check times across restarts.
+5. Leave the published app without visitors through one scheduled interval. In administration, verify a completed scheduled or external-scheduler run and inspect the source, version and resulting public URL. Do this on the intended host with real model credentials to confirm production behavior. No hosted run is claimed by the local tests.
+
+## Changed areas
+
+- `database/migrations/006_scheme_publications.sql` adds source, import, version and run tables with restricted access.
+- `backend/src/modules/catalog/` handles access checks, deterministic extraction, AI validation, publication, and sync runs. The existing provider and reviewer authentication are reused.
+- `backend/src/modules/schemes/schemes.controller.ts` serves public snapshots without caching. Existing scheme IDs are preserved.
+- `frontend/src/pages/SchemeAdminPage.tsx`, `SchemeDetailPage.tsx`, and `SchemesPage.tsx` provide the reviewer workspace, sources and public detail filters.
+- `Dockerfile.scheme-sync`, `render-scheme-sync.yaml` and the standalone command support a visitor-independent deployment.
+- `backend/src/tests/catalog.test.ts` exercises scheduling without requests, AI JSON validation, manual review, public publication, deduplication, and failed-sync protection. For the downloaded official AP PDF fixture set `CATALOG_TEST_PDF`. Set `CATALOG_UI_URL` to the running frontend to exercise the published detail UI in Chromium. Tests use a controlled provider response and never use a live model key.

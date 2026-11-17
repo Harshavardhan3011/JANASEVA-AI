@@ -1,0 +1,12 @@
+import { Router } from 'express';
+import { authMiddleware } from '../../middleware/auth';
+import { deleteDocument,getDocument,getDocuments,reprocessDocument,reviewDocument,uploadDocument,uploadMiddleware } from './documents.controller';
+const router = Router();
+router.use(authMiddleware);
+router.post('/upload',uploadMiddleware.single('document'),uploadDocument);
+router.get('/',getDocuments);
+router.get('/:id',getDocument);
+router.post('/:id/process',reprocessDocument);
+router.post('/:id/review',reviewDocument);
+router.delete('/:id',deleteDocument);
+export default router;

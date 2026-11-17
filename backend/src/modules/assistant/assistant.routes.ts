@@ -1,0 +1,10 @@
+import { Router } from 'express';
+import { authMiddleware } from '../../middleware/auth';
+import { chat, conversation, conversations } from './assistant.controller';
+const router = Router();
+router.use(authMiddleware);
+router.post('/chat', chat);
+router.post('/continue', chat);
+router.get('/conversations', conversations);
+router.get('/conversations/:id', conversation);
+export default router;

@@ -1,0 +1,14 @@
+{
+  "name": "mock-portal",
+  "version": "1.0.0",
+  "description": "Simulated Government Scholarship Portal for JANASEVA AI Demonstrations",
+  "main": "server.js",
+  "scripts": {
+    "dev": "node server.js",
+    "start": "node server.js",
+    "build": "node --check server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

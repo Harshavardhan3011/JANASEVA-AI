@@ -1,0 +1,32 @@
+{
+  "name": "janaseva-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "JANASEVA AI – Autonomous Public Service Execution Agent",
+  "scripts": {
+    "dev": "concurrently -n frontend,backend,portal -c cyan,green,yellow \"npm run dev:frontend\" \"npm run dev:backend\" \"npm run dev:portal\"",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:portal": "cd mock-portal && npm run dev",
+    "build": "npm run build:frontend && npm run build:backend && npm run build:portal",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && npm run build",
+    "build:portal": "cd mock-portal && npm run build",
+    "test": "npm run test:backend",
+    "test:backend": "cd backend && npm test",
+    "lint": "eslint .",
+    "typecheck": "npm run typecheck:frontend && npm run typecheck:backend",
+    "typecheck:frontend": "cd frontend && tsc -b --pretty false",
+    "typecheck:backend": "cd backend && tsc --noEmit",
+    "db:migrate": "node database/run-migrations.js",
+    "policy:index": "npm --prefix backend run policy:index",
+    "test:ui": "node docs/smoke.cjs",
+    "monitor:key": "npm --prefix backend run monitor:key",
+    "schemes:sync": "npm --prefix backend run schemes:sync"
+  },
+  "devDependencies": {
+    "@typescript-eslint/parser": "^8.73.0",
+    "concurrently": "^9.1.0",
+    "eslint": "^9.39.5"
+  }
+}
