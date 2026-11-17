@@ -8,6 +8,13 @@ import type { SchemeDescription } from '../modules/catalog/catalog.types';
 
 const ap='https://sspensions.ap.gov.in/SSP/Documents/GO%20MS%2043%2013.06.2024.pdf';
 const head='Launch of the Sunrise Household Scheme';
+const discoveryTitle='Smallholder Support Scheme';
+const discoveryUrl='https://pmkisan.gov.in/schemes/smallholder-support';
+const secondUrl='https://socialjustice.gov.in/schemes/household-grant';
+const stateUrl='https://karnataka.gov.in/schemes/farm-assistance';
+const listUrl='https://pmkisan.gov.in/schemes/all';
+const untrustedUrl='https://pmkisan.gov.in.example.com/scheme';
+const blockedUrl='https://pmkisan.gov.in/private/scheme';
 const chair='https://pib.gov.in/PressReleaseIframePage.aspx?PRID=9899990';
 
 test('background import, validated publication, AP review, deduplication and failed-sync protection', {timeout:65000}, async()=>{
@@ -19,32 +26,59 @@ test('background import, validated publication, AP review, deduplication and fai
   process.env.SUPABASE_URL='';
   process.env.SUPABASE_SERVICE_ROLE_KEY='';
   process.env.SCHEME_CATALOG_ENABLED='true';
+  process.env.SCHEME_SEARCH_API_KEY='';
   process.env.SCHEME_CATALOG_AUTO_PUBLISH='true';
   process.env.LLM_PROVIDER='openai';
   process.env.LLM_API_KEY='controlled-test-fixture';
   process.env.SCHEME_MONITOR_KEY='controlled-scheme-catalog-reviewer-key-123';
+  const {env}=await import('../config/env');
   const { database,closeDatabase }=await import('../config/db');
   const { scheduleCatalog,runCatalogSync }=await import('../modules/catalog/catalog.job');
+  const { searchPublishers }=await import('../modules/catalog/catalog.publishers');
   const { compact }=await import('../modules/catalog/catalog.types');
   const actual=globalThis.fetch;
   let fail=false, invalidModel=false, amount='2,000', generations=0;
+  const searchQueries:string[]=[];
 
   const makeClaim=(quote:string)=>({text:quote,quote});
   globalThis.fetch=async(input,init)=>{
     const url=new URL(input instanceof Request ? input.url : input.toString());
+    if (url.hostname==='api.search.brave.com') {
+      assert.equal(new Headers(init?.headers).get('X-Subscription-Token'),'fixture-search-key');
+      const query=url.searchParams.get('q') || '';
+      searchQueries.push(query);
+      const links=query.startsWith('site:pmkisan.gov.in ')
+        ? [discoveryUrl,discoveryUrl+'?utm_source=search',listUrl,untrustedUrl,blockedUrl,secondUrl]
+        : query.startsWith('site:karnataka.gov.in ') ? [stateUrl] : [secondUrl];
+      return Response.json({web:{results:links.map(url=>({url,title:'Untrusted search title'}))}});
+    }
+    if (['pmkisan.gov.in','socialjustice.gov.in','karnataka.gov.in'].includes(url.hostname)) {
+      if (url.pathname==='/robots.txt') return new Response('User-agent: *\nDisallow: /private/');
+      assert.notEqual(url.href,blockedUrl,'robots-blocked result is never fetched');
+      const titles:Record<string,string>={
+        [discoveryUrl]:discoveryTitle,[listUrl]:'All schemes',[secondUrl]:'Household Grant Scheme',[stateUrl]:'Farm Assistance Scheme',
+      };
+      const title=titles[url.href];
+      return new Response(`<main><h1>${title}</h1><p>This scheme provides financial assistance to eligible households.</p>
+        <p>The grant is ₹2,000 per household.</p><p>Farmers with up to two hectares can apply.</p>
+        <p>Application instructions and supporting documents are available from the issuing department.</p></main>`,
+        {headers:{'Content-Type':'text/html'}});
+    }
+    assert.notEqual(url.href,untrustedUrl,'unapproved result is never fetched');
     if (url.hostname==='api.openai.com') {
       generations++;
       const messages=JSON.parse(String(init?.body)).messages;
       const input=JSON.parse(messages[messages.length-1].content) as {title:string;source:string};
       const isCentral=input.title===head;
+      const isDiscovered=[discoveryTitle,'Household Grant Scheme','All schemes','Farm Assistance Scheme'].includes(input.title);
       if (isCentral && invalidModel) return Response.json({choices:[{message:{content:'invalid JSON'}}]});
       const text=compact(input.source);
       const evidence=text.match(/[^.]{5,180}NTR Bharosa Pension Scheme[^.]{0,80}/i)?.[0]?.trim() ||
         input.source.split('\n').map(compact).find(line=>line.length>45 && line.length<1000) || text.slice(0,100);
       const filled:SchemeDescription={
         overview:[makeClaim(isCentral?'The Sunrise Household Scheme provides household support.':evidence)],
-        benefits:isCentral?[makeClaim('The grant is ₹'+amount+' per household.')]:[],
-        whoCanApply:[],eligibility:isCentral?[makeClaim('Households residing in the district can apply.')]:[],
+        benefits:isDiscovered?[makeClaim('The grant is ₹2,000 per household.')]:isCentral?[makeClaim('The grant is ₹'+amount+' per household.')]:[],
+        whoCanApply:[],eligibility:isDiscovered?[makeClaim('Farmers with up to two hectares can apply.')]:isCentral?[makeClaim('Households residing in the district can apply.')]:[],
         documents:[],applicationSteps:[],dates:[],contacts:[],status:'unknown',statusEvidence:null,reviewIssues:[],
       };
       return Response.json({choices:[{message:{content:JSON.stringify(filled)}}]});
@@ -173,7 +207,35 @@ test('background import, validated publication, AP review, deduplication and fai
     ({data:list}=await request('/schemes'));
     assert.equal(list.filter((entry:any)=>entry.scheme_name===head).length,1);
     const {data:after}=await request(admin,{headers});
-    assert.ok(after.sources.every((source:any)=>source.last_success_at && source.last_error.includes('503')));
+    const traditional=after.sources.filter((source:any)=>source.kind!=='official_search');
+    assert.ok(traditional.every((source:any)=>source.last_success_at && source.last_error.includes('503')));
+    assert.equal(searchQueries.length,0,'without a key, the existing source checks still run');
+    await db.query("update public.scheme_catalog_sources set enabled=false where kind<>'official_search'");
+    env.SCHEME_SEARCH_API_KEY='fixture-search-key';
+    await markDue();await runCatalogSync('test-discover');
+    assert.match(searchQueries[0],/^site:pmkisan\.gov\.in /);
+    const {data:discovered}=await request('/schemes');
+    assert.equal(discovered.filter((entry:any)=>entry.scheme_name===discoveryTitle).length,1);
+    assert.ok(!discovered.some((entry:any)=>entry.scheme_name==='All schemes'));
+    const {data:discoverySummary}=await request(admin,{headers});
+    const discoveryRun=discoverySummary.runs.find((run:any)=>run.trigger_kind==='test-discover');
+    assert.equal(discoveryRun.added,2);
+    assert.equal(discoveryRun.published,1);
+    assert.equal(discoveryRun.failed,1);
+    assert.ok(discoveryRun.error.includes('disallows automated access'));
+    assert.equal(discoverySummary.imports.find((item:any)=>item.metadata.title==='All schemes').scheme_id,null);
+
+    await markDue();await runCatalogSync('test-next-publisher');
+    assert.match(searchQueries[1],/^site:socialjustice\.gov\.in /);
+    await db.query("update public.scheme_catalog_sources set settings='{}' where kind='official_search'");
+    const beforeRepeat=generations;
+    await markDue();await runCatalogSync('test-repeat-search');
+    assert.equal(generations,beforeRepeat,'rediscovered official documents skip AI when unchanged');
+    const stateCursor=searchPublishers.findIndex(publisher=>publisher.host==='karnataka.gov.in');
+    await db.query("update public.scheme_catalog_sources set settings=$1 where kind='official_search'",[JSON.stringify({cursor:stateCursor})]);
+    await markDue();await runCatalogSync('test-state-discovery');
+    const {data:withState}=await request('/schemes');
+    assert.ok(withState.some((entry:any)=>entry.scheme_name==='Farm Assistance Scheme' && entry.coverage_state==='Karnataka'));
     assert.ok(after.runs.some((run:any)=>run.trigger_kind==='test-updated' && run.changed===1 && run.published===1));
   } finally {
     await stop();

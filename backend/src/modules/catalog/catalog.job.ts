@@ -3,10 +3,11 @@ import { database } from '../../config/db';
 import { env } from '../../config/env';
 import { createOfficialReader, discoverPib, readDocument } from './catalog.fetch';
 import { captureDocument, generateVersion, publishVersion } from './catalog.repo';
+import { searchMetadata, searchOfficialSchemes } from './catalog.search';
 import { metadataSchema } from './catalog.types';
 
 interface CatalogSource {
-  id:string; url:string; kind:'pib_rss'|'document'; settings:unknown;
+  id:string; url:string; kind:'pib_rss'|'document'|'official_search'; settings:unknown;
   lease_id:string; interval_minutes:number;
 }
 interface Counts { added:number; changed:number; skipped:number; failed:number; published:number }
@@ -22,10 +23,10 @@ async function claim() {
   const { rows:[source] }=await (await database()).query<CatalogSource>(`
     update public.scheme_catalog_sources set lease_id=$1,lease_until=now()+interval '12 minutes'
     where id=(select id from public.scheme_catalog_sources
-      where enabled and next_check_at<=now() and (lease_until is null or lease_until<now())
+      where enabled and (kind<>'official_search' or $2::boolean) and next_check_at<=now() and (lease_until is null or lease_until<now())
       order by next_check_at,id for update skip locked limit 1)
     returning id,url,kind,settings,lease_id,interval_minutes
-  `,[lease]);
+  `,[lease,Boolean(env.SCHEME_SEARCH_API_KEY)]);
   return source;
 }
 
@@ -40,23 +41,33 @@ export async function runCatalogSync(trigger='scheduled') {
     const counters:Counts={ added:0,changed:0,skipped:0,failed:0,published:0 };
     const outcomes:Outcome[]=[];
     let sourceError:string|null=null;
+    let nextSearchCursor:number|null=null;
     await db.query(`insert into public.scheme_catalog_runs(id,source_id,trigger_kind) values($1,$2,$3)`,
       [source.lease_id,source.id,trigger]);
     try {
       const read=createOfficialReader();
       const defaults=source.settings as Record<string,unknown>;
-      const candidates=source.kind==='pib_rss'
+      const search=source.kind==='official_search' ? await searchOfficialSchemes(defaults) : null;
+      nextSearchCursor=search?.nextCursor ?? null;
+      const candidates=search?.candidates ?? (source.kind==='pib_rss'
         ? await discoverPib(read,source.url)
-        : [{ url:source.url,title:String(defaults.title || '') }];
+        : [{ url:source.url,title:String(defaults.title || '') }]);
       for (const candidate of candidates) {
         try {
           const announceOnly=source.kind==='pib_rss' && !/^(?:launch(?: of|es|ed)?|new scheme|scheme guidelines)|(?:नई योजना का शुभारंभ|योजना के दिशा-निर्देश)/iu.test(candidate.title);
-          const metadata=metadataSchema.parse({
+          const document=await readDocument(read,candidate.url,candidate.title);
+          const metadata=search ? searchMetadata(document,candidate.url) : metadataSchema.parse({
             ...defaults,title:candidate.title,
             reviewNote:announceOnly ? 'This press release may report activity about a scheme rather than define a new scheme.' : defaults.reviewNote,
           });
-          const document=await readDocument(read,candidate.url,metadata.title);
-          const capture=await captureDocument(metadata,document);
+          if (!metadata) {
+            counters.skipped++;
+            outcomes.push({url:candidate.url,result:'no-scheme-title'});
+            continue;
+          }
+          const capture=await captureDocument(metadata,{
+            ...document,originalTitle:document.originalTitle || metadata.title,
+          });
           counters[capture.kind]++;
           const draft=await generateVersion(capture.version.id);
           let published=false;
@@ -87,7 +98,9 @@ export async function runCatalogSync(trigger='scheduled') {
           greatest(now()+interval '1 minute',date_trunc('minute',(select started_at from public.scheme_catalog_runs where id=$2))+
             interval '1 minute'*interval_minutes)
           else now()+interval '1 minute'*interval_minutes end,
-        last_error=$3 where id=$1 and lease_id=$2`,[source.id,source.lease_id,error]);
+        last_error=$3,settings=case when $4::bigint is null then settings
+          else jsonb_set(settings,'{cursor}',to_jsonb($4::bigint)) end
+        where id=$1 and lease_id=$2`,[source.id,source.lease_id,error,nextSearchCursor]);
     });
   }
 }

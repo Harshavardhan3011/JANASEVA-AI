@@ -13,7 +13,7 @@ async function run() {
     for (const filename of [
       'migrations/001_initial_schema.sql','migrations/002_rls_policies.sql',
       'migrations/003_workflow_integrity.sql','migrations/004_scheme_catalog.sql','migrations/005_scheme_monitor.sql',
-      'migrations/006_scheme_publications.sql',
+      'migrations/006_scheme_publications.sql','migrations/007_scheme_search.sql',
       'seed/001_seed_schemes.sql',
     ]) {
       const { rowCount }=await pool.query('select 1 from public.janaseva_migrations where filename=$1',[filename]);

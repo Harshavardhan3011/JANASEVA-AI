@@ -38,6 +38,7 @@ async function connect(): Promise<Storage> {
   for (const file of [
     'migrations/001_initial_schema.sql', 'migrations/003_workflow_integrity.sql', 'migrations/004_scheme_catalog.sql',
     'migrations/005_scheme_monitor.sql', 'migrations/006_scheme_publications.sql',
+    'migrations/007_scheme_search.sql',
     'seed/001_seed_schemes.sql', 'seed/002_seed_nsp_catalog.sql',
   ]) {
     await local.exec(await readFile(join(root, 'database', file), 'utf8'));

@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { publisherForHost } from './catalog.publishers';
 import { categories } from '../monitor/monitor.types';
 
 export const unknownDetail='Not specified in the official source.';
@@ -25,7 +26,7 @@ export const supportedHosts=new Set([
 ]);
 export const officialSourceUrl=z.url({protocol:/^https$/}).refine(value=>{
   const url=new URL(value);
-  return supportedHosts.has(url.hostname) && !url.username && !url.password && !url.port;
+  return (supportedHosts.has(url.hostname) || Boolean(publisherForHost(url.hostname))) && !url.username && !url.password && !url.port;
 },'Use an HTTPS URL on an approved government source domain.');
 export const metadataSchema=z.object({
   title:z.string().trim().min(3).max(255),
@@ -34,6 +35,7 @@ export const metadataSchema=z.object({
   state:z.string().trim().max(120).default(''),
   category:z.enum(categories).default('Other'),
   reviewNote:z.string().trim().max(600).optional(),
+  discovery:z.literal('official_search').optional(),
 });
 export type ImportMetadata=z.infer<typeof metadataSchema>;
 export interface SourceDocument {

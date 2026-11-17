@@ -12,6 +12,17 @@ The public catalog is available at `/schemes`. Each existing and newly published
 
 No webhook was verified for the two enabled sources. The live fetcher checks robots directives at each allowlisted origin in a run, allows ordinary 404/410 absence of a robots file, bounds downloads and timeouts, and revalidates redirects. PM-KISAN's public PDF endpoint was also tested from the local runtime and failed TLS certificate verification, so it is available as a manual PDF source rather than an enabled poller. When automated access is unavailable, an authorized reviewer can upload a public official PDF and provide the original source URL. The source upload stays under review until verified.
 
+## Automatic discovery across India
+
+The **India-wide official scheme search** source searches one configured publisher per run. The publisher list includes central ministries and official portals for every state and union territory, plus selected department and district sites. It rotates publishers and search topics so one state does not dominate the results. The default interval is 60 minutes, with one search request and up to four candidate documents per run. The existing PIB and Andhra Pradesh sources keep their own intervals.
+
+1. Apply migration `007_scheme_search.sql` with `npm run db:migrate` against the same hosted database used by the web API and scheduled worker.
+2. Get an API key from [Brave Search API](https://api-dashboard.search.brave.com/). Set `SCHEME_SEARCH_API_KEY` on Render's scheduled sync service along with the existing model credentials. If you want **Sync now** to run discovery directly on the web service, set the search key there too. Keep it out of Vercel and GitHub.
+3. Redeploy the API and the scheduled worker with the updated code. The existing `*/15 * * * *` Render schedule picks up due sources. Discovery defaults to hourly and can be adjusted under **Sources and sync runs**. Use **Trigger Run** on the Render cron service to start a due check immediately.
+4. Under **Sources and sync runs**, check for an `external-scheduler` run for the India-wide search. A successful search can return no eligible candidates. Check the run's added, published, skipped and failed counts.
+
+Search results supply URLs only. The worker fetches approved publishers directly, checks robots rules and validates redirects. Official evidence supplies the title and the AI-generated description. Unchanged pages skip generation. The existing publication checks accept cited, verifiable records and send ambiguous documents and conflicting or incomplete claims for review. Sites with blocked access, unreadable documents or pages absent from the search index can leave coverage gaps, particularly for district and village notices. The myScheme site is excluded from this search integration.
+
 ## Review and sync
 
 1. Sign in, then open **Schemes → Manage schemes**. For local setup retrieve the existing reviewer key with `npm run monitor:key`. Production uses `SCHEME_MONITOR_KEY`.
