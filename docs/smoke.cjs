@@ -21,7 +21,7 @@ async function main() {
     const uncaught = [];
     page.on('pageerror',error=>uncaught.push(error.message));
     await page.goto(base);
-    await page.getByRole('heading',{name:'A clearer path to your college scholarship.'}).waitFor();
+    await page.getByRole('heading',{name:'Find government schemes that could help you.'}).waitFor();
     if (process.env.JANASEVA_SCREENSHOT_DIR) {
       mkdirSync(process.env.JANASEVA_SCREENSHOT_DIR,{recursive:true});
       await page.screenshot({path:join(process.env.JANASEVA_SCREENSHOT_DIR,'janaseva-desktop.png')});
@@ -31,7 +31,10 @@ async function main() {
       await mobile.screenshot({path:join(process.env.JANASEVA_SCREENSHOT_DIR,'janaseva-mobile.png')});
       await mobile.close();
     }
-    await page.getByRole('link',{name:'Start an application'}).click();
+    await page.getByRole('link',{name:'Browse schemes',exact:true}).click();
+    await page.getByRole('searchbox',{name:'Search schemes'}).waitFor();
+    await page.getByRole('link',{name:'JANASEVA AI',exact:true}).click();
+    await page.getByRole('link',{name:'Create account',exact:true}).click();
     await page.locator('[name=name]').fill('Asha Student');
     await page.locator('[name=email]').fill('asha-'+Date.now()+'@example.test');
     await page.locator('[name=password]').fill('LocalDemoPassword123!');

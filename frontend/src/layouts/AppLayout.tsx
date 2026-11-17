@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import {
   ShieldCheck,
   LayoutDashboard,
-  GraduationCap,
+  Landmark,
   Bot,
   FileText,
   FolderOpen,
@@ -27,7 +27,7 @@ export const AppLayout: React.FC = () => {
 
   const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/schemes', label: 'Schemes', icon: GraduationCap },
+    { to: '/schemes', label: 'Schemes', icon: Landmark },
     { to: '/assistant', label: 'AI Assistant', icon: Bot },
     { to: '/documents', label: 'Document Center', icon: FolderOpen },
     { to: '/applications', label: 'Applications', icon: FileText },
@@ -97,7 +97,6 @@ export const AppLayout: React.FC = () => {
           })}
         </nav>
 
-        <div className="mx-4 mb-4 rounded-lg border border-teal-100 bg-teal-50 p-3 text-xs text-teal-900">Scholarship demonstration</div>
         {/* User Card & Logout */}
         <div className="p-4 border-t border-slate-200 bg-slate-50/50">
           <div className="flex items-center justify-between">

@@ -1,6 +1,6 @@
 # JANASEVA AI
 
-A citizen workspace for fresh **PM-USP CSSS** college scholarship screening. Ask the assistant a question, check the published conditions, review two supporting documents and authorize Playwright to prepare a demonstration portal form. A second explicit approval submits that form and returns a demo receipt.
+JANASEVA AI helps people find government schemes and official notices that are easy to miss. Browse by category and location, then check eligibility, benefits, application deadlines and links to the issuing authority. The goal is to make schemes easier to discover worldwide, starting with official sources in India.
 
 The default run uses an embedded PostgreSQL database via PGlite, local private file storage and deterministic policy retrieval. It works without cloud credentials. Use fictitious applicant data and the supplied sample documents in the demonstration.
 
@@ -28,7 +28,7 @@ cd ..
 
 For bundled Chromium on Windows set `BROWSER_CHANNEL=bundled` in the root `.env`. To use installed Google Chrome, set `BROWSER_CHANNEL=chrome`.
 
-## Demonstrate the complete workflow
+## Try the PM-USP CSSS guided application demo
 
 1. Create a local account with a fictitious address such as `asha@example.test` and a password of at least eight characters.
 2. Open **Schemes** and select **PM-USP CSSS**. Read the official guidelines, then choose **Start guided application**. You can also ask the assistant **Help me apply for a college scholarship**.
@@ -39,7 +39,7 @@ For bundled Chromium on Windows set `BROWSER_CHANNEL=bundled` in the root `.env`
 
 Official screening uses the [Ministry guidelines](https://scholarships.gov.in/public/schemeGuidelines/CSSS_GUIDLINES_07022024_updated.pdf) and the [2025–26 fresh-applicant FAQ](https://scholarships.gov.in/public/schemeGuidelines/FAQ_DOHE_CSSS.pdf). Consult the [National Scholarship Portal](https://scholarships.gov.in/) for live application windows and official submission.
 
-## Refresh the scholarship catalog
+## Refresh the National Scholarship Portal listings
 
 The Schemes page includes the 31 records from the [default NSP listing](https://scholarships.gov.in/All-Scholarships) reviewed on 17 November 2026. For a refresh, review the official listings and update `database/seed/nsp_catalog.csv`. Keep each `scheme_key` stable and record the new check date. The NEC listing is tagged as a renewal deadline because NSP identifies it that way.
 

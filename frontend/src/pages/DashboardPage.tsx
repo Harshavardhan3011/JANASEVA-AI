@@ -1,6 +1,6 @@
 import { useEffect,useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, ClipboardCheck, GraduationCap, MessageCircle } from 'lucide-react';
+import { ArrowRight, ClipboardCheck, Landmark, MessageCircle } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../services/api';
 import { errorMessage,statusLabel } from '../services/workflow';
@@ -14,11 +14,11 @@ export const DashboardPage = () => {
   useEffect(()=>{ api.get('/applications').then(r=>setApps(r.data.data)).catch(e=>setError(errorMessage(e))).finally(()=>setLoading(false)); },[]);
   return <div className="workflow">
     <section className="dashboard-hero"><div><span className="civic-kicker"><span/> CITIZEN WORKSPACE</span>
-      <h1>Welcome, {user?.name?.split(' ')[0] || 'citizen'}.</h1><p>Explore the scholarship, check your eligibility and pick up where you left off.</p>
+      <h1>Welcome, {user?.name?.split(' ')[0] || 'citizen'}.</h1><p>Find government schemes, review official updates and pick up where you left off.</p>
       <div className="inline-actions">
         <Link className="primary-action" to="/schemes">Browse schemes <ArrowRight size={16}/></Link>
         <Link className="secondary-action" to="/assistant"><MessageCircle size={18}/> Ask the scholarship assistant</Link>
-      </div></div><GraduationCap size={90} strokeWidth={1.2}/></section>
+      </div></div><Landmark size={90} strokeWidth={1.2}/></section>
     {error && <p className="workflow-error" role="alert">{error}</p>}
     <section className="workflow-card"><div className="section-heading"><div><h2>Your applications</h2><p>Track screening, review and demo submission.</p></div><Link className="secondary-action" to="/applications">View all <ArrowRight size={16}/></Link></div>
       {loading ? <p>Loading applications…</p> : !apps.length ? <div className="dashboard-empty"><ClipboardCheck size={24}/> <span>No applications yet. Start from the scholarship assistant.</span></div> :

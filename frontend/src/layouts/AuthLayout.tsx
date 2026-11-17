@@ -13,7 +13,7 @@ export const AuthLayout: React.FC = () => {
           <span className="text-2xl font-bold tracking-tight text-slate-900">JANASEVA AI</span>
         </Link>
         <p className="mt-2 text-sm text-slate-600">
-          Autonomous Public Service Execution Agent
+          Government schemes and official notices
         </p>
       </div>
 
