@@ -1,6 +1,7 @@
 import { useEffect,useState } from 'react';
 import { Link,useParams } from 'react-router-dom';
 import { ArrowLeft,ArrowUpRight } from 'lucide-react';
+import { SchemeChecklist } from '../components/SchemeChecklist';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../services/api';
 import { errorMessage } from '../services/workflow';
@@ -8,6 +9,7 @@ import { dateLabel,describeStatus,schemeSections,unavailable } from '../services
 import type { Description,SchemeStatus,Section } from '../services/schemeDetails';
 
 interface Detail {
+  recheck_status:string|null;recheck_error:string|null;
   scheme_name:string; department:string; official_url:string; original_title:string|null;
   description:string; category:string|null; coverage_state:string|null;
   source_fetched_at:string|null; last_verified_at:string|null; catalog_checked_on:string|null;
@@ -19,6 +21,7 @@ interface Detail {
 export const SchemeDetailPage=()=>{
   const {id}=useParams();
   const {user}=useAuth();
+  const [refreshMessage,setRefreshMessage]=useState('');
   const [actionError,setActionError]=useState('');
   const [following,setFollowing]=useState(false);
   const [saving,setSaving]=useState(false);
@@ -35,7 +38,7 @@ export const SchemeDetailPage=()=>{
 
   const legacy:Partial<Record<Section,string|null>>=entry?.detail || !entry ? {} : {
     overview:entry.description, benefits:entry.benefits_summary, eligibility:entry.eligibility_summary,
-    dates:entry.application_deadline ? `${entry.application_cycle==='renewal'?'Renewal':'Student application'} deadline: ${dateLabel(entry.application_deadline)}` : null,
+    dates:entry.application_deadline ? 'Recorded cycle '+(entry.application_cycle || 'unspecified')+'. Current application window could not be verified. Check the official portal.' : null,
   };
   return <div className="workflow">
     <Link to="/schemes" className="back-link"><ArrowLeft size={17}/> All schemes</Link>
@@ -54,6 +57,13 @@ export const SchemeDetailPage=()=>{
         </div> : <Link to="/login" className="secondary-action">Sign in to follow updates</Link>}
       </section>
       <section className="workflow-card" aria-label="Official source">
+        <div className="inline-actions"><button disabled={saving} className="secondary-action" onClick={async()=>{
+          setSaving(true);setActionError('');
+          try {await api.post('/schemes/'+id+'/refresh');setRefreshMessage('Recheck requested. The last verified information stays visible while the scheduled worker checks.');}
+          catch(err) {setActionError(errorMessage(err));}finally {setSaving(false);}
+        }}>Refresh official information</button></div>
+        {refreshMessage && <p role="status">{refreshMessage}</p>}
+        {entry.recheck_status && <p>Latest recheck · {entry.recheck_status}{entry.recheck_error?' · '+entry.recheck_error:''}</p>}
         <span className="state-label">{describeStatus(entry.scheme_status)}</span>
         <p>Source: <a className="font-semibold text-teal-800 underline" href={entry.official_url} target="_blank" rel="noreferrer">{entry.original_title || entry.department}</a></p>
         <p>Last verified: {entry.last_verified_at || entry.catalog_checked_on ? dateLabel(entry.last_verified_at || entry.catalog_checked_on!) : unavailable}</p>
@@ -61,6 +71,7 @@ export const SchemeDetailPage=()=>{
         {entry.application_url && entry.scheme_status!=='closed' ? <a className="primary-action" href={entry.application_url} target="_blank" rel="noreferrer">
           Apply on official portal <ArrowUpRight size={16}/></a> : null}
       </section>
+      {user && id && <SchemeChecklist id={id} items={[...(entry.detail?.documents || []),...(entry.detail?.applicationSteps || [])].map(claim=>claim.text)}/>}
       {schemeSections.map(([key,label])=>{
         const claims=entry.detail?.[key];
         const List=key==='applicationSteps' ? 'ol' : 'ul';

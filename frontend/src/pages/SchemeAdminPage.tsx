@@ -11,7 +11,8 @@ const categories=['Other','Agriculture','Education','Employment','Finance','Heal
 interface Source {id:string;label:string;url:string;enabled:boolean;interval_minutes:number;last_success_at:string|null;last_checked_at:string|null;last_error:string|null}
 interface Run {id:string;source_id:string;trigger_kind:string;started_at:string;finished_at:string|null;added:number;changed:number;skipped:number;failed:number;published:number;error:string|null;outcomes:Array<{url:string;result:string;error?:string}>}
 interface Import {id:string;scheme_id:string|null;version_id:string;original_title:string;status:string;error:string|null;metadata:{title:string}}
-interface Dashboard {sources:Source[];runs:Run[];imports:Import[]}
+interface Registry {id:string;label:string;url:string;purpose:string;jurisdiction:string;department:string;access_method:string;access_note:string;approved:boolean;last_error:string|null}
+interface Dashboard {sources:Source[];runs:Run[];imports:Import[];registry:Registry[];coverage:Array<{jurisdiction:string;department:string;sources:number;approved:number}>}
 interface Version {id:string;source_url:string;original_title:string;source_text:string;metadata:{title:string;applyUrl:string|null;reviewNote?:string;incomplete:boolean};description:Description|null;published_description:Description|null;error:string|null;status:string;scheme_id:string|null}
 
 function ClaimInput({ claim,onChange }:{claim:Claim;onChange:(value:Claim)=>void}) {
@@ -38,7 +39,7 @@ export const SchemeAdminPage=()=>{
   }
   async function open(id:string) {
     const row=(await api.get<{data:Version}>(endpoint+'/versions/'+id,config)).data.data;
-    setVersion(row);setDraft(row.description || emptyDescription());setVerified(false);
+    setVersion(row);setDraft({...emptyDescription(),...row.description});setVerified(false);
   }
   async function act(fn:()=>Promise<void>) {
     setBusy(true);setError('');setMessage('');
@@ -73,7 +74,7 @@ export const SchemeAdminPage=()=>{
   }
   const path=version ? endpoint+'/versions/'+version.id : '';
   function updateClaim(section:Section,index:number,claim:Claim) {
-    setDraft(current=>({...current,[section]:current[section].map((item,i)=>i===index?claim:item)}));
+    setDraft(current=>({...current,[section]:(current[section] || []).map((item,i)=>i===index?claim:item)}));
   }
   return <div className="workflow">
     <Link className="back-link" to="/schemes">← Schemes</Link>
@@ -88,6 +89,27 @@ export const SchemeAdminPage=()=>{
       </form>
     </section>
     {dashboard ? <>
+      <section className="workflow-card"><h2>Official source registry</h2>
+        <p>Confirm the access method and publisher terms before approving a source. Feed and API contracts require a dedicated connector.</p>
+        <details><summary>Add an official source</summary><form className="grid gap-3 pt-3" onSubmit={event=>{
+          event.preventDefault();const values=Object.fromEntries(new FormData(event.currentTarget));
+          void act(async()=>{await api.put(endpoint+'/registry/'+values.id,{...values,approved:values.approved==='on'},config);await loadDashboard();setMessage('Registry saved.');});
+        }}>
+          {['id','label','url','purpose','jurisdiction','department','access_note'].map(field=><label className="grid gap-1" key={field}>{field.replace('_',' ')}<input name={field} required maxLength={field==='access_note'?1000:500}/></label>)}
+          <label>Access method<select name="access_method"><option value="manual_review">Manual review</option><option value="listing">Permitted public listing</option><option value="document">Official document</option><option value="feed">Feed</option><option value="api">API</option></select></label>
+          <label><input name="approved" type="checkbox"/>I verified permitted automated access for this source.</label>
+          <button className="secondary-action" disabled={busy}>Save source</button>
+        </form></details>
+        <div className="space-y-3 pt-3">{dashboard.registry?.map(source=><article key={source.id} className="rounded border border-slate-200 p-3">
+          <a className="underline font-bold" href={source.url} target="_blank" rel="noreferrer">{source.label}</a>
+          <p>{source.purpose}</p><p>{source.jurisdiction} · {source.department} · {source.access_method} · {source.approved?'Approved':'Access review required'}</p><p>{source.access_note}</p>
+        </article>)}</div>
+        <details className="mt-4"><summary>Jurisdiction and department coverage</summary>
+          <p>Counts show registered sources and access approval. Zero means a source still needs to be added.</p>
+          <div className="max-h-80 overflow-auto"><table className="w-full text-sm"><thead><tr><th>Jurisdiction</th><th>Department</th><th>Sources</th><th>Approved</th></tr></thead>
+            <tbody>{dashboard.coverage?.map(row=><tr key={row.jurisdiction+row.department}><td>{row.jurisdiction}</td><td>{row.department}</td><td>{row.sources}</td><td>{row.approved}</td></tr>)}</tbody></table></div>
+        </details>
+      </section>
       <section className="workflow-card">
         <div className="section-heading"><div><h2>Sources and sync runs</h2></div>
           <button className="secondary-action" disabled={busy} onClick={()=>void act(async()=>{
@@ -129,6 +151,7 @@ export const SchemeAdminPage=()=>{
             <label>Official source URL<input name="url" type="url" required/></label>
             <label>Scheme name<input name="title" required minLength={3} maxLength={255}/></label>
             <label>Issuing authority<input name="issuer" required maxLength={255}/></label>
+            <label>Aliases, separated by commas<input name="aliases" maxLength={1000}/></label>
             <label>Official scheme ID (if provided)<input name="officialId" maxLength={120}/></label>
             <label>State (leave empty for national)<input name="state" maxLength={120}/></label>
             <label>Category<select name="category">{categories.map(item=><option key={item}>{item}</option>)}</select></label>
@@ -171,7 +194,7 @@ export const SchemeAdminPage=()=>{
         <fieldset disabled={busy || version.status==='published'}>
           {schemeSections.map(([section,label])=><details className="mt-3 rounded-md border border-slate-200 p-3" key={section} open={section==='overview'||undefined}>
             <summary className="cursor-pointer font-semibold">{label} ({draft[section].length})</summary>
-            {draft[section].map((claim,index)=><div key={index} className="pb-2">
+            {(draft[section] || []).map((claim,index)=><div key={index} className="pb-2">
               <ClaimInput claim={claim} onChange={value=>updateClaim(section,index,value)}/>
               <button className="text-action mt-1" onClick={()=>setDraft(current=>({...current,[section]:current[section].filter((_,i)=>i!==index)}))}>Remove item</button>
             </div>)}
@@ -181,7 +204,7 @@ export const SchemeAdminPage=()=>{
             <select value={draft.status} onChange={event=>{
               const status=event.target.value as SchemeStatus;
               setDraft(current=>({...current,status,statusEvidence:status==='unknown'?null:{text:'',quote:''}}));
-            }}><option value="unknown">Not specified</option><option value="open">Open</option><option value="closed">Closed</option></select>
+            }}><option value="unknown">Not specified</option><option value="open">Open</option><option value="closed">Closed</option><option value="announced">Announced</option><option value="rolling">Rolling</option></select>
           </label>
           {draft.statusEvidence ? <ClaimInput claim={draft.statusEvidence} onChange={claim=>setDraft(current=>({...current,statusEvidence:claim}))}/> : null}
           {version.status!=='published' ? <>

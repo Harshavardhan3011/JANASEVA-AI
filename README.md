@@ -28,26 +28,19 @@ cd ..
 
 For bundled Chromium on Windows set `BROWSER_CHANNEL=bundled` in the root `.env`. To use installed Google Chrome, set `BROWSER_CHANNEL=chrome`.
 
-## Try the PM-USP CSSS guided application demo
+## Find schemes and use your dashboard
 
-1. Create a local account with a fictitious address such as `asha@example.test` and a password of at least eight characters.
-2. Open **Schemes** and select **PM-USP CSSS**. Read the official guidelines, then choose **Start guided application**. You can also ask the assistant **Help me apply for a college scholarship**.
-3. Enter **Asha Student**, **Example College**, **B.Sc.**, annual income **180000**, and board-stream percentile **92**. Answer **Yes** for regular degree, recognized institution entry into the first year after Class XII and inclusion on the published board list. Answer **No** for another scholarship and a gap after Class XII.
-4. Upload [the sample income certificate](docs/demo/income-certificate.png) and [the sample marksheet](docs/demo/marksheet.pdf). Review the extracted values and confirm each document.
-5. Prepare the reviewed application and explicitly authorize browser preparation. The app displays a screenshot from the mock portal.
-6. Review the filled form and explicitly authorize submission. The portal issues a `DEMO-…` reference. Reload the application and open its activity history to see the approvals and recorded result.
+Visitors can search at `/schemes` and ask questions at `/assistant`. Search checks published names, aliases, categories and locations. The assistant selects relevant database records with the existing AI provider and falls back to deterministic catalog search if that provider is unavailable. It cites the official source, states missing requirements and avoids confirming an application window from an old catalog date.
 
-Official screening uses the [Ministry guidelines](https://scholarships.gov.in/public/schemeGuidelines/CSSS_GUIDLINES_07022024_updated.pdf) and the [2025–26 fresh-applicant FAQ](https://scholarships.gov.in/public/schemeGuidelines/FAQ_DOHE_CSSS.pdf). Consult the [National Scholarship Portal](https://scholarships.gov.in/) for live application windows and official submission.
+Sign in to use `/dashboard`. The optional profile stores state, district, occupation, age range and income range. Recommendations explain coverage and occupation matches. Other eligibility conditions remain subject to the official guideline. Save or remove schemes, check verified upcoming deadlines, follow publication changes and keep a personal document/application-step checklist on each detail page. Existing guided applications remain at their original URLs.
 
-## Refresh the National Scholarship Portal listings
+## Sources and deployment
 
-The Schemes page includes the 31 records from the [default NSP listing](https://scholarships.gov.in/All-Scholarships) reviewed on 17 November 2026. For a refresh, review the official listings and update `database/seed/nsp_catalog.csv`. Keep each `scheme_key` stable and record the new check date. The NEC listing is tagged as a renewal deadline because NSP identifies it that way.
+The source registry at `/schemes/admin` includes myScheme, its State/UT directory, India.gov.in, IGOD, DBT Bharat, NSP listings and student announcements, JanSamarth, and PIB. Review-key authentication protects registry changes, sync and publication. Access-pending portals are listed with their intended purpose and are disabled until the supported automated access method is verified. myScheme requires written authorization and an API integration.
 
-Run `python database/build-nsp-catalog.py` to regenerate the versioned SQL seed. Restart the local backend to apply it, or run `npm run db:migrate` against the configured hosted database. The import updates reviewed records by stable ID. Retire a removed listing by setting its database status to `ARCHIVED`.
+Run `npm run db:migrate` against the hosted database before deploying this update. Migration `009_scheme_finder.sql` adds source registration, recheck requests, optional profile fields, aliases and personal checklist progress. Existing records and public scheme IDs are preserved.
 
-For automatic checks of the pilot official sources and review of uploaded village notices, open [Scheme Monitor](http://localhost:5173/schemes/monitor). See the [monitor setup and operations guide](docs/scheme-monitor.md).
-
-Use **Schemes → Manage schemes** for versioned official imports, AI descriptions, publication and production synchronization. See the [Government Schemes publishing guide](docs/government-schemes.md).
+The Render sync Blueprint runs daily at 02:00 UTC (07:30 India time). It checks due sources independently of site visitors. Deploy the separate `Dockerfile.scheme-sync` service against the same database and configure its existing AI and search credentials. An existing Render cron service must have its schedule updated in Render or through its Blueprint. The local checkout cannot confirm that a hosted scheduler is running. See [source access and operations](docs/government-schemes.md).
 
 ## Verify or deploy
 

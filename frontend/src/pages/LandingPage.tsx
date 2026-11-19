@@ -1,13 +1,16 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link,useNavigate } from 'react-router-dom';
 import { ArrowRight, ArrowUpRight, CalendarDays, ChevronRight, ClipboardCheck, Globe2, Landmark, Search, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 export const LandingPage = () => {
   const { user } = useAuth();
+  const navigate=useNavigate();
+  const [query,setQuery]=useState('');
   return <div className="civic-landing">
     <header className="civic-header"><div className="civic-shell civic-nav">
       <Link className="civic-brand" to="/"><span><Landmark size={22}/></span><strong>JANASEVA<span> AI</span></strong></Link>
-      <nav aria-label="Main navigation"><Link to="/schemes">Schemes</Link><a href="#how-it-works">How it works</a></nav>
+      <nav aria-label="Main navigation"><Link to="/schemes">Explore Schemes</Link><Link to="/assistant">Ask AI</Link><Link to="/dashboard">Dashboard</Link></nav>
       <div className="civic-nav-actions"><Link to={user ? '/dashboard' : '/login'}>{user ? 'Dashboard' : 'Sign in'}</Link>{!user && <Link className="primary-action" to="/register">Create account <ArrowUpRight size={15}/></Link>}</div>
     </div></header>
     <main>
@@ -15,6 +18,10 @@ export const LandingPage = () => {
         <div className="civic-hero-copy">
           <h1>Find government schemes <em>that could help you.</em></h1>
           <p>Discover government schemes and official notices. See who can apply, what support is available and when applications close.</p>
+          <form className="grid gap-3 py-4" onSubmit={event=>{event.preventDefault();navigate('/schemes?q='+encodeURIComponent(query));}}>
+            <label className="grid gap-2">What support are you looking for?<input placeholder="Search schemes or ask a question" maxLength={1500} value={query} onChange={event=>setQuery(event.target.value)}/></label>
+            <div className="inline-actions"><button className="primary-action">Find a scheme</button><Link className="secondary-action" to={'/assistant?q='+encodeURIComponent(query)}>Ask JANASEVA AI</Link></div>
+          </form>
           <div className="hero-actions"><Link className="primary-action" to="/schemes">Browse schemes <ArrowRight size={18}/></Link><a href="#how-it-works" className="secondary-action">See how it works</a></div>
           <span className="hero-note"><ShieldCheck size={17}/> Current catalog coverage starts in India.</span>
         </div>

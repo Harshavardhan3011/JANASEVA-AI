@@ -1,3 +1,4 @@
+import { assertPublicHost } from './catalog.network';
 import { load } from 'cheerio';
 import robotsParser from 'robots-parser';
 import pdf from 'pdf-parse/lib/pdf-parse.js';
@@ -8,6 +9,13 @@ const agent='JANASEVA-AI';
 const fetchHeaders={'User-Agent':agent+'/1.0'};
 const maximum=8*1024*1024;
 const textLimit=60000;
+const nextRequest=new Map<string,number>();
+async function pace(host:string,delaySeconds=1) {
+ const now=Date.now();
+ const next=Math.max(now,nextRequest.get(host) || now);
+ nextRequest.set(host,next+Math.max(1,delaySeconds)*1000);
+ if (next>now) await new Promise(resolve=>setTimeout(resolve,next-now));
+}
 
 async function bounded(response:Response, limit:number) {
   if (!response.body) return Buffer.alloc(0);
@@ -23,13 +31,15 @@ async function bounded(response:Response, limit:number) {
   }
 }
 
-export function createOfficialReader() {
+export function createOfficialReader(checkHost=assertPublicHost) {
   const rules=new Map<string,Promise<ReturnType<typeof robotsParser>>>();
   async function robots(origin:string) {
     const original=origin+'/robots.txt';
     const host=new URL(origin).hostname.replace(/^www\./,'');
     let url=original;
     for (let hop=0;hop<4;hop++) {
+      await checkHost(new URL(url).hostname);
+      await pace(new URL(url).hostname);
       const response=await fetch(url,{headers:fetchHeaders,redirect:'manual',signal:AbortSignal.timeout(12000)});
       if (response.status>=300 && response.status<400 && response.headers.has('location')) {
         await response.body?.cancel();
@@ -60,9 +70,11 @@ export function createOfficialReader() {
     let url=new URL(input);
     for (let hop=0; hop<4; hop++) {
       officialSourceUrl.parse(url.href);
+      await checkHost(url.hostname);
       const policy=rules.get(url.origin) ?? robots(url.origin);
       rules.set(url.origin,policy);
       if ((await policy).isAllowed(url.href,agent)===false) throw new Error('The publisher disallows automated access to this URL.');
+      await pace(url.hostname,(await policy).getCrawlDelay(agent) || 1);
       const response=await fetch(url,{headers:fetchHeaders,redirect:'manual',signal:AbortSignal.timeout(15000)});
       if (response.status>=300 && response.status<400 && response.headers.has('location')) {
         await response.body?.cancel();

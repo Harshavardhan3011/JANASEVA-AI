@@ -3,9 +3,11 @@ services:
     name: janaseva-scheme-sync
     runtime: docker
     dockerfilePath: ./Dockerfile.scheme-sync
-    schedule: "*/15 * * * *"
+    schedule: "0 2 * * *"
     envVars:
       - key: DATABASE_URL
+        sync: false
+      - key: TAVILY_API_KEY
         sync: false
       - key: LLM_PROVIDER
         value: gemini

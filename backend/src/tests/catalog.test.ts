@@ -17,7 +17,7 @@ const untrustedUrl='https://pmkisan.gov.in.example.com/scheme';
 const blockedUrl='https://pmkisan.gov.in/private/scheme';
 const chair='https://pib.gov.in/PressReleaseIframePage.aspx?PRID=9899990';
 
-test('background import, validated publication, AP review, deduplication and failed-sync protection', {timeout:65000}, async()=>{
+test('background import, validated publication, AP review, deduplication and failed-sync protection', {timeout:180000}, async()=>{
   const directory=await mkdtemp(join(tmpdir(),'janaseva-catalog-'));
   const pdf=process.env.CATALOG_TEST_PDF ? await readFile(process.env.CATALOG_TEST_PDF) : null;
   process.env.NODE_ENV='development';
@@ -38,6 +38,9 @@ test('background import, validated publication, AP review, deduplication and fai
   const { searchPublishers }=await import('../modules/catalog/catalog.publishers');
   const { compact }=await import('../modules/catalog/catalog.types');
   const actual=globalThis.fetch;
+  const dns=require('node:dns/promises');
+  const actualLookup=dns.lookup;
+  dns.lookup=async()=>[{address:'8.8.8.8',family:4}];
   let fail=false, invalidModel=false, amount='2,000', generations=0;
   const searchQueries:string[]=[];
 
@@ -124,7 +127,7 @@ test('background import, validated publication, AP review, deduplication and fai
     assert.ok(completed,'scheduled sync completed with zero requests');
     const { rows }=await db.query<{published:number}>(
       "select published from public.scheme_catalog_runs where source_id='central-pib'");
-    assert.equal(rows[0].published,1);
+    assert.equal(rows[0].published,1,JSON.stringify((await db.query('select error,outcomes from public.scheme_catalog_runs')).rows));
 
     const {default:app}=await import('../app');
     server=app.listen(0,'127.0.0.1');
@@ -326,10 +329,50 @@ test('background import, validated publication, AP review, deduplication and fai
     const {data:withState}=await request('/schemes');
     assert.ok(withState.some((entry:any)=>entry.scheme_name==='Farm Assistance Scheme' && entry.coverage_state==='Karnataka'));
     assert.equal(searchQueries.length,3,'Tavily is used without also calling Brave');
+    env.TAVILY_API_KEY='';env.SCHEME_SEARCH_API_KEY='';env.LLM_API_KEY='';
+    const {data:scholarshipAnswer}=await request('/assistant/answer',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:'Find scholarships for a third-year mechanical engineering student in Andhra Pradesh.'}),
+    });
+    assert.ok(scholarshipAnswer.matches.length>0);
+    assert.ok(scholarshipAnswer.matches.every((scheme:any)=>scheme.official_url.startsWith('https://')));
+    assert.ok(scholarshipAnswer.matches.some((scheme:any)=>scheme.category==='Education'));
+    assert.equal(scholarshipAnswer.ai_used,false,'search survives model unavailability');
+    const {data:deadlineAnswer}=await request('/assistant/answer',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({message:'Is PM-USP CSSS open and what is the deadline?'}),
+    });
+    assert.match(deadlineAnswer.reply,/could not be verified/);
+    await request(admin+'/registry/example-source',{method:'PUT',headers:{Authorization:otherHeaders.Authorization,'Content-Type':'application/json'},
+      body:JSON.stringify({})},403);
+    await request('/citizen-schemes/progress/'+central.id,{method:'PUT',headers,
+      body:JSON.stringify({'Income certificate':true})});
+    const {data:otherProgress}=await request('/citizen-schemes/progress/'+central.id,{headers:otherHeaders});
+    assert.deepEqual(otherProgress,{});
+    const {data:ownProgress}=await request('/citizen-schemes/progress/'+central.id,{headers});
+    assert.equal(ownProgress['Income certificate'],true);
+    await request('/schemes/'+central.id+'/refresh',{method:'POST'},202);
+    await request('/schemes/'+central.id+'/refresh',{method:'POST'},202);
+    const {rows:rechecks}=await db.query('select scheme_id from public.scheme_recheck_requests where scheme_id=$1',[central.id]);
+    assert.equal(rechecks.length,1);
+    const {captureDocument}=await import('../modules/catalog/catalog.repo');
+    const variantDocument={url:'https://www.pib.gov.in/variant-one',originalTitle:'Variant scheme',text:'Official fixture evidence for distinct state variants.',applyUrl:null,incomplete:false};
+    const firstVariant=await captureDocument({title:'Variant scheme',issuer:'Fixture department',officialId:'SAME-ID',state:'Karnataka',category:'Other'},variantDocument);
+    const secondVariant=await captureDocument({title:'Variant scheme',issuer:'Fixture department',officialId:'SAME-ID',state:'Andhra Pradesh',category:'Other'},
+      {...variantDocument,url:'https://www.pib.gov.in/variant-two'});
+    assert.notEqual(firstVariant.version.import_id,secondVariant.version.import_id);
+    const {assertPublicHost}=await import('../modules/catalog/catalog.network');
+    dns.lookup=async()=>[{address:'127.0.0.1',family:4}];
+    await assert.rejects(assertPublicHost('www.pib.gov.in'),/non-public/);
+    dns.lookup=async()=>[{address:'8.8.8.8',family:4}];
+    await assertPublicHost('www.pib.gov.in');
+
+
     assert.ok(after.runs.some((run:any)=>run.trigger_kind==='test-updated' && run.changed===1 && run.published===1));
   } finally {
     await stop();
     if (server) await new Promise<void>(resolve=>{server!.close(()=>resolve());server!.closeAllConnections();});
+    dns.lookup=actualLookup;
     globalThis.fetch=actual;
     await closeDatabase();
     await rm(directory,{recursive:true,force:true}).catch(()=>{});

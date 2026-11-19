@@ -4,6 +4,7 @@ import { database } from '../../config/db';
 import { authMiddleware } from '../../middleware/auth';
 import { successResponse } from '../../shared/response';
 import { AppError } from '../../shared/errors';
+import { findSchemes, verifiedDeadline } from '../schemes/scheme.finder';
 import { schemes } from '../schemes/schemes.controller';
 import type { SchemeDescription } from '../catalog/catalog.types';
 
@@ -17,7 +18,7 @@ router.get('/',async(req,res)=>{
   const db=await database();
   const user=req.user!.id;
   const [profile,watches,alerts,catalog]=await Promise.all([
-    db.query('select state from public.citizen_scheme_profiles where user_id=$1',[user]),
+    db.query('select state,details from public.citizen_scheme_profiles where user_id=$1',[user]),
     db.query(`select w.scheme_id,i.published_version as version_id,v.description,v.source_url,
       a.version_id as assessed_version,a.answers from public.citizen_scheme_watches w
       left join public.scheme_catalog_imports i on i.scheme_id=w.scheme_id
@@ -27,10 +28,17 @@ router.get('/',async(req,res)=>{
     db.query(`select a.*,s.scheme_name,v.source_url from public.citizen_scheme_alerts a
       join public.schemes s on s.id=a.scheme_id join public.scheme_catalog_versions v on v.id=a.version_id
       where a.user_id=$1 order by a.created_at desc limit 50`,[user]),
-    schemes(),
+    schemes(undefined,true),
   ]);
   successResponse(res,{
-    state:profile.rows[0]?.state || '',alerts:alerts.rows,
+    state:profile.rows[0]?.state || '',profile:profile.rows[0]?.details || {},alerts:alerts.rows,
+    recommendations:findSchemes(catalog,String(profile.rows[0]?.details?.occupation || ''),profile.rows[0]?.state || '').map(scheme=>({
+      ...scheme,deadline:verifiedDeadline(scheme),recommendation_note:'Age, income and other eligibility conditions still need checking.',
+    })),
+    deadlines:catalog.filter(scheme=>watches.rows.some(watch=>watch.scheme_id===scheme.id)).flatMap(scheme=>{
+      const deadline=verifiedDeadline(scheme);
+      return deadline && deadline>=new Date().toISOString().slice(0,10)?[{id:scheme.id,scheme_name:scheme.scheme_name,deadline,cycle:scheme.academic_year}]:[];
+    }),
     watches:watches.rows.map(watch=>({
       ...watch,description:watch.description ? {...watch.description,reviewIssues:undefined}:null,
       scheme:catalog.find(scheme=>scheme.id===watch.scheme_id),
@@ -40,9 +48,14 @@ router.get('/',async(req,res)=>{
   });
 });
 router.put('/profile',async(req,res)=>{
-  const {state}=z.object({state:z.string().trim().max(120)}).strict().parse(req.body);
-  await (await database()).query(`insert into public.citizen_scheme_profiles(user_id,state) values($1,$2)
-    on conflict(user_id) do update set state=excluded.state,updated_at=now()`,[req.user!.id,state]);
+  const {state,...details}=z.object({
+    state:z.string().trim().max(120),district:z.string().trim().max(120).optional(),
+    ageRange:z.enum(['','under18','18-25','26-40','41-60','over60']).optional(),
+    incomeRange:z.enum(['','under1lakh','1-3lakh','3-5lakh','over5lakh']).optional(),
+    occupation:z.string().trim().max(120).optional(),
+  }).strict().parse(req.body);
+  await (await database()).query(`insert into public.citizen_scheme_profiles(user_id,state,details) values($1,$2,$3)
+    on conflict(user_id) do update set state=excluded.state,details=excluded.details,updated_at=now()`,[req.user!.id,state,JSON.stringify(details)]);
   successResponse(res,{saved:true});
 });
 router.put('/watches/:id',async(req,res)=>{
@@ -77,6 +90,20 @@ router.put('/assessments/:id',async(req,res)=>{
       [req.user!.id,scheme,body.versionId,JSON.stringify(body.answers)]);
   });
   successResponse(res,{saved:true});
+});
+router.get('/progress/:id',async(req,res)=>{
+ const {rows:[row]}=await (await database()).query('select progress from public.citizen_scheme_progress where user_id=$1 and scheme_id=$2',[req.user!.id,z.uuid().parse(req.params.id)]);
+ successResponse(res,row?.progress || {});
+});
+router.put('/progress/:id',async(req,res)=>{
+ const id=z.uuid().parse(req.params.id);
+ const progress=z.record(z.string().max(2000),z.boolean()).parse(req.body);
+ if (Object.keys(progress).length>100) throw AppError.badRequest('Too many checklist items.');
+ const {rows}=await (await database()).query('select id from public.schemes where id=$1',[id]);
+ if (!rows.length) throw AppError.notFound('Scheme not found.');
+ await (await database()).query(`insert into public.citizen_scheme_progress(user_id,scheme_id,progress) values($1,$2,$3)
+   on conflict(user_id,scheme_id) do update set progress=excluded.progress,updated_at=now()`,[req.user!.id,id,JSON.stringify(progress)]);
+ successResponse(res,{saved:true});
 });
 router.post('/alerts/:id/read',async(req,res)=>{
   await (await database()).query('update public.citizen_scheme_alerts set read_at=coalesce(read_at,now()) where id=$1 and user_id=$2',

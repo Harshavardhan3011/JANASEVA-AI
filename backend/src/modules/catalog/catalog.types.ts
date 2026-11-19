@@ -3,18 +3,19 @@ import { publisherForHost } from './catalog.publishers';
 import { categories } from '../monitor/monitor.types';
 
 export const unknownDetail='Not specified in the official source.';
-export const sections=['overview','whoCanApply','benefits','eligibility','documents','applicationSteps','dates','contacts'] as const;
+export const sections=['overview','whoCanApply','benefits','eligibility','exclusions','documents','applicationSteps','dates','contacts'] as const;
 export const sectionNames={
   overview:'Overview', whoCanApply:'Who can apply', benefits:'Benefits', eligibility:'Eligibility',
-  documents:'Documents', applicationSteps:'How to apply', dates:'Important dates', contacts:'Official contacts',
+  exclusions:'Exclusions', documents:'Documents', applicationSteps:'How to apply', dates:'Important dates', contacts:'Official contacts',
 };
 export const claimSchema=z.object({ text:z.string().trim().min(3).max(1600), quote:z.string().trim().min(5).max(2400) }).strict();
 export const descriptionSchema=z.object({
   overview:z.array(claimSchema).max(4), whoCanApply:z.array(claimSchema).max(12),
   benefits:z.array(claimSchema).max(14), eligibility:z.array(claimSchema).max(18),
+  exclusions:z.array(claimSchema).max(12).optional(),
   documents:z.array(claimSchema).max(14), applicationSteps:z.array(claimSchema).max(15),
   dates:z.array(claimSchema).max(10), contacts:z.array(claimSchema).max(10),
-  status:z.enum(['unknown','open','closed']),
+  status:z.enum(['unknown','announced','open','closed','rolling']),
   statusEvidence:claimSchema.nullable(),
   reviewIssues:z.array(z.string().trim().min(1).max(350)).max(12),
 }).strict();
@@ -35,6 +36,10 @@ export const metadataSchema=z.object({
   state:z.string().trim().max(120).default(''),
   category:z.enum(categories).default('Other'),
   reviewNote:z.string().trim().max(600).optional(),
+  aliases:z.preprocess(value=>typeof value==='string'?value.split(',').map(item=>item.trim()).filter(Boolean):value,z.array(z.string().trim().min(2).max(120)).max(12).optional()),
+  district:z.string().trim().max(120).optional(),
+  coverageLevel:z.enum(['National','State','District','Village']).optional(),
+  applicationPortalSource:z.boolean().optional(),
   discovery:z.literal('official_search').optional(),
 });
 export type ImportMetadata=z.infer<typeof metadataSchema>;
@@ -62,7 +67,7 @@ const numbers=(str:string)=>compact(str).match(/\d+(?:[,.]\d+)*/g)?.map(value=>v
 export function verifyDescription(description:SchemeDescription,sourceText:string) {
   const source=compact(sourceText);
   const problems:string[]=[];
-  const claims=sections.flatMap(key=>description[key]);
+  const claims=sections.flatMap(key=>description[key] || []);
   if (description.statusEvidence) claims.push(description.statusEvidence);
   for (const claim of claims) {
     const quote=compact(claim.quote);
@@ -73,6 +78,8 @@ export function verifyDescription(description:SchemeDescription,sourceText:strin
     const quote=description.statusEvidence?.quote || '';
     const stateEvidence=description.status==='closed'
       ? /(?:applications? (?:are|is|have been|has been) (?:closed|no longer accepted)|scheme (?:is|has been) (?:closed|discontinued)|आवेदन बंद (?:हैं|है))/iu
+      : description.status==='announced' ? /(?:scheme.{0,50}(?:announced|launched)|(?:announces|launches).{0,50}scheme)/iu
+      : description.status==='rolling' ? /(?:applications?.{0,50}(?:throughout the year|year.round|rolling basis|no closing date))/iu
       : /(?:applications?[^.]{0,32}(?:are now open|are open|are invited)|आवेदन आमंत्रित)/iu;
     if (!stateEvidence.test(quote)) problems.push('The official text does not explicitly confirm the application status.');
   }

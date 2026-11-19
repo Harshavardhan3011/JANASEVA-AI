@@ -25,7 +25,8 @@ async function lockImport(db:Database,id:string) {
 export async function captureDocument(meta:ImportMetadata,document:SourceDocument) {
   const canonical=canonicalSource(document.url);
   const authority=new URL(canonical).hostname.replace(/^www\./,'');
-  const key=meta.officialId ? authority+':'+meta.officialId.toUpperCase() : null;
+  const legacyKey=meta.officialId ? authority+':'+meta.officialId.toUpperCase() : null;
+  const key=meta.officialId && meta.state ? authority+':'+meta.state.toUpperCase()+':'+meta.officialId.toUpperCase() : legacyKey;
   const metadata={ ...meta,applyUrl:document.applyUrl,incomplete:document.incomplete };
   const hash=createHash('sha256').update(JSON.stringify([
     compact(document.text),document.originalTitle,document.applyUrl,document.incomplete,
@@ -35,7 +36,7 @@ export async function captureDocument(meta:ImportMetadata,document:SourceDocumen
       values($1,$2) on conflict do nothing`,[canonical,key]);
     const { rows }=await db.query<ImportRow>(`select * from public.scheme_catalog_imports
       where canonical_url=$1 or official_key=$2 for update`,[canonical,key]);
-    if (rows.length!==1 || (key && rows[0].official_key && key!==rows[0].official_key)) {
+    if (rows.length!==1 || (key && rows[0].official_key && key!==rows[0].official_key && !(rows[0].canonical_url===canonical && rows[0].official_key===legacyKey))) {
       throw AppError.conflict('This official ID and source URL refer to different imports. Resolve the conflict before updating.');
     }
     const entry=rows[0];
@@ -159,6 +160,14 @@ export async function publishVersion(id:string,actor:string|null) {
       [entry.id,schemeId,id]);
     await db.query(`update public.scheme_catalog_versions set status='published',verified_at=now(),reviewed_by=$2,error=null
       where id=$1`,[id,actor]);
+    await db.query(`insert into public.scheme_catalog_sources(id,label,url,kind,settings,interval_minutes,next_check_at)
+      values($1,$2,$3,'document',$4,1440,now()+interval '1 day') on conflict(id) do update set
+      label=excluded.label,url=excluded.url,settings=excluded.settings`,
+      ['tracked-'+entry.id,meta.title,version.source_url,JSON.stringify({
+        title:meta.title,issuer:meta.issuer,state:meta.state,category:meta.category,
+        officialId:meta.officialId,aliases:meta.aliases,district:meta.district,coverageLevel:meta.coverageLevel,
+        applicationPortalSource:meta.applicationPortalSource,reviewNote:meta.reviewNote,
+      })]);
     return schemeId;
   });
 }

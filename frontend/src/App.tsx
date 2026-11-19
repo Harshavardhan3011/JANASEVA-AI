@@ -28,6 +28,7 @@ export const App: React.FC = () => {
       <Route element={<SchemeLayout />}>
         <Route path="/schemes" element={<SchemesPage />} />
         <Route path="/schemes/:id" element={<SchemeDetailPage />} />
+        <Route path="/assistant" element={<AssistantPage />} />
       </Route>
 
       {/* Auth Routes */}
@@ -43,7 +44,6 @@ export const App: React.FC = () => {
           <Route path="/my-schemes" element={<Suspense fallback={<p role="status">Loading your schemes…</p>}><MySchemesPage /></Suspense>} />
           <Route path="/schemes/monitor" element={<SchemeMonitorPage />} />
           <Route path="/schemes/admin" element={<Suspense fallback={<p role="status">Loading administration…</p>}><SchemeAdminPage /></Suspense>} />
-          <Route path="/assistant" element={<AssistantPage />} />
           <Route path="/documents" element={<DocumentsPage />} />
           <Route path="/applications" element={<ApplicationsListPage />} />
           <Route path="/applications/:id" element={<ApplicationReviewPage />} />

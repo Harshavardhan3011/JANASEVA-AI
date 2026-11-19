@@ -4,10 +4,12 @@ import { env } from '../../config/env';
 import { createOfficialReader, discoverPib, readDocument } from './catalog.fetch';
 import { captureDocument, generateVersion, publishVersion } from './catalog.repo';
 import { hasSearchKey, searchMetadata, searchOfficialSchemes } from './catalog.search';
+import { loadApprovedHosts, discoverListing } from './catalog.registry';
+import { runRechecks } from './catalog.recheck';
 import { metadataSchema } from './catalog.types';
 
 interface CatalogSource {
-  id:string; url:string; kind:'pib_rss'|'document'|'official_search'; settings:unknown;
+  id:string; url:string; kind:'pib_rss'|'document'|'official_search'|'listing'; settings:unknown;
   lease_id:string; interval_minutes:number;
 }
 interface Counts { added:number; changed:number; skipped:number; failed:number; published:number }
@@ -30,8 +32,10 @@ async function claim() {
   return source;
 }
 
-export async function runCatalogSync(trigger='scheduled') {
+export async function runCatalogSync(trigger='scheduled',autoPublish=true) {
   const db=await database();
+  await loadApprovedHosts();
+  await runRechecks();
   await db.query(`update public.scheme_catalog_runs
     set finished_at=now(),failed=greatest(failed,1),error='The worker stopped before recording a result.'
     where finished_at is null and started_at<now()-interval '13 minutes'`);
@@ -49,7 +53,8 @@ export async function runCatalogSync(trigger='scheduled') {
       const defaults=source.settings as Record<string,unknown>;
       const search=source.kind==='official_search' ? await searchOfficialSchemes(defaults) : null;
       nextSearchCursor=search?.nextCursor ?? null;
-      const candidates=search?.candidates ?? (source.kind==='pib_rss'
+      const listing=source.kind==='listing' ? await discoverListing(read,source.url) : null;
+      const candidates=listing ?? search?.candidates ?? (source.kind==='pib_rss'
         ? await discoverPib(read,source.url)
         : [{ url:source.url,title:String(defaults.title || '') }]);
       for (const candidate of candidates) {
@@ -73,7 +78,7 @@ export async function runCatalogSync(trigger='scheduled') {
           let published=false;
           if (draft.status==='generation_failed') {
             counters.failed++;
-          } else if (env.SCHEME_CATALOG_AUTO_PUBLISH && !metadata.reviewNote && draft.status==='draft' && draft.description?.overview.length) {
+          } else if (autoPublish && env.SCHEME_CATALOG_AUTO_PUBLISH && !metadata.reviewNote && draft.status==='draft' && draft.description?.overview.length) {
             published=Boolean(await publishVersion(draft.id,null));
             if (published) counters.published++;
           }
@@ -102,12 +107,15 @@ export async function runCatalogSync(trigger='scheduled') {
           else jsonb_set(settings,'{cursor}',to_jsonb($4::bigint)) end
         where id=$1 and lease_id=$2`,[source.id,source.lease_id,error,nextSearchCursor]);
     });
+    if (source.id.startsWith('registry-')) await db.query(`update public.scheme_source_registry
+      set checked_at=now(),last_error=$2,last_success_at=case when $2::text is null then now() else last_success_at end where id=$1`,
+      [source.id.slice(9),error]);
   }
 }
 
 let job:Promise<void>|undefined;
-export function wakeCatalog(trigger:string) {
-  return job ??= runCatalogSync(trigger).finally(()=>{job=undefined;});
+export function wakeCatalog(trigger:string,autoPublish=true) {
+  return job ??= runCatalogSync(trigger,autoPublish).finally(()=>{job=undefined;});
 }
 export function scheduleCatalog() {
   if (!env.SCHEME_CATALOG_ENABLED || env.NODE_ENV==='test') return async ()=>{};

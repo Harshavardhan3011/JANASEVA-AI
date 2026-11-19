@@ -6,9 +6,6 @@ import {
   LayoutDashboard,
   Landmark,
   Bot,
-  FileText,
-  FolderOpen,
-  Activity,
   LogOut,
   Menu,
   X,
@@ -26,13 +23,9 @@ export const AppLayout: React.FC = () => {
   };
 
   const navItems = [
+    { to: '/schemes', label: 'Explore Schemes', icon: Landmark },
+    { to: '/assistant', label: 'Ask AI', icon: Bot },
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { to: '/my-schemes', label: 'My schemes', icon: Activity },
-    { to: '/schemes', label: 'Schemes', icon: Landmark },
-    { to: '/assistant', label: 'AI Assistant', icon: Bot },
-    { to: '/documents', label: 'Document Center', icon: FolderOpen },
-    { to: '/applications', label: 'Applications', icon: FileText },
-    { to: '/tracking', label: 'Activity history', icon: Activity },
   ];
 
   return (

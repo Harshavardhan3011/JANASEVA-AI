@@ -9,7 +9,9 @@ export const SchemeLayout=()=>{
     <header className="border-b border-slate-200 bg-white">
       <nav className="civic-shell flex flex-wrap items-center gap-4 py-4">
         <Link to="/" className="font-extrabold text-slate-900">JANASEVA AI</Link>
-        <Link to="/schemes" className="ml-auto text-sm font-semibold">Schemes</Link>
+        <Link to="/schemes" className="ml-auto text-sm font-semibold">Explore Schemes</Link>
+        <Link to="/assistant" className="text-sm font-semibold">Ask AI</Link>
+        <Link to="/dashboard" className="text-sm font-semibold">Dashboard</Link>
         <Link to="/login" className="secondary-action">Sign in</Link>
       </nav>
     </header>

@@ -1,7 +1,9 @@
+import rateLimit from 'express-rate-limit';
 import { Router } from 'express';
 import { authMiddleware } from '../../middleware/auth';
-import { chat, conversation, conversations } from './assistant.controller';
+import { chat, conversation, conversations, publicAnswer } from './assistant.controller';
 const router = Router();
+router.post('/answer',rateLimit({windowMs:60000,limit:8}),publicAnswer);
 router.use(authMiddleware);
 router.post('/chat', chat);
 router.post('/continue', chat);
