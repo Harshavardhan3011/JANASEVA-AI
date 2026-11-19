@@ -27,6 +27,7 @@ export const AppLayout: React.FC = () => {
 
   const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/my-schemes', label: 'My schemes', icon: Activity },
     { to: '/schemes', label: 'Schemes', icon: Landmark },
     { to: '/assistant', label: 'AI Assistant', icon: Bot },
     { to: '/documents', label: 'Document Center', icon: FolderOpen },

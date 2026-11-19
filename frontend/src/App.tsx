@@ -6,6 +6,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { AppLayout } from './layouts/AppLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
+const MySchemesPage=lazy(()=>import('./pages/MySchemesPage').then(module=>({default:module.MySchemesPage})));
 import { DashboardPage } from './pages/DashboardPage';
 import { SchemesPage } from './pages/SchemesPage';
 import { SchemeMonitorPage } from './pages/SchemeMonitorPage';
@@ -39,6 +40,7 @@ export const App: React.FC = () => {
       <Route element={<ProtectedRoute />}>
         <Route element={<AppLayout />}>
           <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/my-schemes" element={<Suspense fallback={<p role="status">Loading your schemes…</p>}><MySchemesPage /></Suspense>} />
           <Route path="/schemes/monitor" element={<SchemeMonitorPage />} />
           <Route path="/schemes/admin" element={<Suspense fallback={<p role="status">Loading administration…</p>}><SchemeAdminPage /></Suspense>} />
           <Route path="/assistant" element={<AssistantPage />} />

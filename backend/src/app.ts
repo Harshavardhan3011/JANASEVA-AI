@@ -19,6 +19,7 @@ import trackingRoutes from './modules/tracking/tracking.routes';
 import assistantRoutes from './modules/assistant/assistant.routes';
 import documentsRoutes from './modules/documents/documents.routes';
 import monitorRoutes from './modules/monitor/monitor.routes';
+import citizenRoutes from './modules/citizen/citizen.routes';
 import catalogAdmin from './modules/catalog/catalog.admin';
 
 const app: Application = express();
@@ -50,6 +51,7 @@ app.use('/api/v1/assistant', assistantRoutes);
 app.use('/api/v1/documents', documentsRoutes);
 app.use('/api/v1/scheme-monitor', monitorRoutes);
 app.use('/api/v1/scheme-catalog-admin',catalogAdmin);
+app.use('/api/v1/citizen-schemes',citizenRoutes);
 app.use('/api/v1', healthRoutes);
 
 // 404 Handler

@@ -191,6 +191,27 @@ test('background import, validated publication, AP review, deduplication and fai
     let {data:list}=await request('/schemes');
     const central=list.find((item:any)=>item.scheme_name===head);
     assert.ok(central);
+    await request('/citizen-schemes',undefined,401);
+    await request('/citizen-schemes/profile',{method:'PUT',headers,body:JSON.stringify({state:'Karnataka'})});
+    await request('/citizen-schemes/watches/'+central.id,{method:'PUT',headers});
+    await request('/citizen-schemes/watches/'+central.id,{method:'PUT',headers});
+    const {data:followed}=await request('/citizen-schemes',{headers});
+    assert.equal(followed.state,'Karnataka');
+    assert.equal(followed.watches.length,1,'following twice is idempotent');
+    assert.deepEqual(followed.watches[0].answers,{});
+    const initialVersion=followed.watches[0].version_id;
+    const answerBody={versionId:initialVersion,answers:{'eligibility.0':'met'}};
+    await request('/citizen-schemes/assessments/'+central.id,{method:'PUT',headers,body:JSON.stringify(answerBody)});
+    await request('/citizen-schemes/assessments/'+central.id,{method:'PUT',headers,
+      body:JSON.stringify({...answerBody,answers:{'invented.0':'met'}})},400);
+    const {data:other}=await request('/auth/register',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:'Other citizen',email:'other-citizen@example.test',password:'ExamplePassword123!'}),
+    },201);
+    const otherHeaders={Authorization:'Bearer '+other.token};
+    const {data:isolated}=await request('/citizen-schemes',{headers:otherHeaders});
+    assert.equal(isolated.watches.length,0);
+    assert.equal(isolated.state,'');
     const markDue=()=>db.query('update public.scheme_catalog_sources set next_check_at=now()');
     const calls=generations;
     await markDue();await runCatalogSync('test-unchanged');
@@ -200,6 +221,56 @@ test('background import, validated publication, AP review, deduplication and fai
     const {data:updated}=await request('/schemes/'+central.id);
     assert.equal(updated.detail.benefits[0].text,'The grant is ₹3,000 per household.');
     assert.equal(updated.application_url,'https://www.pib.gov.in/Apply.aspx');
+    const {data:changed}=await request('/citizen-schemes',{headers});
+    assert.equal(changed.alerts.length,1);
+    assert.equal(changed.alerts[0].changes.benefits.before[0].text,'The grant is ₹2,000 per household.');
+    assert.equal(changed.alerts[0].changes.benefits.after[0].text,'The grant is ₹3,000 per household.');
+    assert.equal(changed.watches[0].stale,true);
+    assert.deepEqual(changed.watches[0].answers,{});
+    await request('/citizen-schemes/assessments/'+central.id,{method:'PUT',headers,body:JSON.stringify(answerBody)},409);
+    await request('/citizen-schemes/alerts/'+changed.alerts[0].id+'/read',{method:'POST',headers:otherHeaders});
+    const {data:unread}=await request('/citizen-schemes',{headers});
+    assert.equal(unread.alerts[0].read_at,null,'another citizen cannot mark this alert read');
+    await request('/citizen-schemes/alerts/'+changed.alerts[0].id+'/read',{method:'POST',headers});
+    const {data:read}=await request('/citizen-schemes',{headers});
+    assert.ok(read.alerts[0].read_at);
+    await request('/citizen-schemes/assessments/'+central.id,{method:'PUT',headers,
+      body:JSON.stringify({...answerBody,versionId:changed.watches[0].version_id,answers:{'eligibility.0':'unknown'}})});
+    const {data:reassessed}=await request('/citizen-schemes',{headers});
+    assert.equal(reassessed.watches[0].stale,false);
+    assert.equal(reassessed.watches[0].answers['eligibility.0'],'unknown');
+    if (process.env.CATALOG_UI_URL) {
+      const {chromium}=await import('playwright');
+      const {browserOptions}=await import('../config/browser');
+      const browser=await chromium.launch(browserOptions());
+      try {
+        const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
+        await page.route('**/api/v1/**',async route=>{
+          const incoming=route.request();
+          const path=new URL(incoming.url()).pathname.replace('/api/v1','');
+          const response=await actual(base+path,{
+            method:incoming.method(),headers:{Authorization:headers.Authorization,'Content-Type':'application/json'},
+            body:incoming.postData() || undefined,
+          });
+          await route.fulfill({status:response.status,contentType:'application/json',body:await response.text()});
+        });
+        await page.goto(process.env.CATALOG_UI_URL+'/');
+        await page.evaluate(session=>{
+          localStorage.setItem('janaseva_token',session.token);
+          localStorage.setItem('janaseva_user',JSON.stringify(session.user));
+        },session);
+        await page.goto(process.env.CATALOG_UI_URL+'/my-schemes');
+        await page.getByRole('heading',{name:'My schemes',exact:true}).waitFor();
+        await page.getByText('Benefits changed',{exact:true}).click();
+        await page.getByText('The grant is ₹2,000 per household.',{exact:true}).waitFor();
+        await page.getByText('The grant is ₹3,000 per household.',{exact:true}).waitFor();
+        await page.getByRole('combobox',{name:'Your answer for Households residing in the district can apply.'}).selectOption('met');
+        await page.getByRole('button',{name:'Save assessment',exact:true}).click();
+        await page.getByText('Saved.',{exact:true}).waitFor();
+        assert.equal(await page.locator('html').evaluate(element=>element.scrollWidth),390);
+      } finally {await browser.close();}
+    }
+
     invalidModel=true;
     amount='4,000';
     await markDue();await runCatalogSync('test-model-failure');
@@ -207,6 +278,8 @@ test('background import, validated publication, AP review, deduplication and fai
     const broken=failedDrafts.imports.find((item:any)=>item.metadata.title===head);
     assert.equal(broken.status,'generation_failed');
     assert.equal(broken.scheme_id,central.id);
+    const {data:afterFailedGeneration}=await request('/citizen-schemes',{headers});
+    assert.equal(afterFailedGeneration.alerts.length,1,'failed generation creates no publication alert');
     invalidModel=false;
     const {data:recovered}=await request(admin+'/versions/'+broken.version_id+'/retry',{method:'POST',headers});
     assert.equal(recovered.status,'draft');
@@ -215,6 +288,10 @@ test('background import, validated publication, AP review, deduplication and fai
     await markDue();await runCatalogSync('test-failure');
     const {data:retained}=await request('/schemes/'+central.id);
     assert.deepEqual(retained.detail,updated.detail);
+    const {data:afterFailedSync}=await request('/citizen-schemes',{headers});
+    assert.equal(afterFailedSync.alerts.length,1,'unchanged and failed syncs create no duplicate alerts');
+    const {data:otherInbox}=await request('/citizen-schemes',{headers:otherHeaders});
+    assert.equal(otherInbox.alerts.length,0);
     ({data:list}=await request('/schemes'));
     assert.equal(list.filter((entry:any)=>entry.scheme_name===head).length,1);
     const {data:after}=await request(admin,{headers});

@@ -50,3 +50,13 @@ The existing project describes a static Vercel frontend, a Node/Docker API (Rend
 - `frontend/src/pages/SchemeAdminPage.tsx`, `SchemeDetailPage.tsx`, and `SchemesPage.tsx` provide the reviewer workspace, sources and public detail filters.
 - `Dockerfile.scheme-sync`, `render-scheme-sync.yaml` and the standalone command support a visitor-independent deployment.
 - `backend/src/tests/catalog.test.ts` exercises scheduling without requests, AI JSON validation, manual review, public publication, deduplication, and failed-sync protection. For the downloaded official AP PDF fixture set `CATALOG_TEST_PDF`. Set `CATALOG_UI_URL` to the running frontend to exercise the published detail UI in Chromium. Tests use a controlled provider response and never use a live model key.
+
+## Citizen assessments and publication alerts
+
+Migration `008_citizen_scheme_alerts.sql` adds authenticated citizen location preferences, followed schemes, version-specific self-assessments, and an in-app alert inbox. Run `npm run db:migrate` against the hosted database before deploying the updated API and sync worker, then deploy the frontend. Local development applies the migration on initialization.
+
+Citizens sign in, open a scheme and choose **Follow updates**, then open **My schemes** to mark each published eligibility or who-can-apply claim as met, unmet, or unknown. The checklist displays the original quotation and official source. Missing answers stay unknown. Citizens can save their state and compare it with the published coverage. These are self-reported assessments, and the issuing authority determines eligibility. This increment does not infer individual eligibility automatically from age or income.
+
+Whenever the existing publication transaction changes a followed scheme's published version, a database trigger compares the published description sections and inserts a unique alert for each follower. The inbox shows previous and new claims, dates, documents, benefits and status. Failed imports and unpublished drafts produce no alerts. The next publication invalidates the previous assessment so a citizen can review current conditions. Alerts are generated in the database even when no citizen has the page open, and are retrieved when they next open My schemes. Email and push delivery are not configured.
+
+The authenticated `/api/v1/citizen-schemes` routes scope every profile, watch, assessment, and alert operation to the signed-in user. The new tables have RLS enabled and no direct grants to browser roles. The catalog integration test verifies following idempotency, owner isolation, publication diffs, stale assessment rejection, unknown answers, and preservation after failed syncs.
