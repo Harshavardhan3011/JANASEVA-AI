@@ -1,3 +1,4 @@
+import { enqueueDiscovery, processDiscoveryQueue } from './catalog.queue';
 import { randomUUID } from 'node:crypto';
 import { database } from '../../config/db';
 import { env } from '../../config/env';
@@ -32,7 +33,7 @@ async function claim() {
   return source;
 }
 
-export async function runCatalogSync(trigger='scheduled',autoPublish=true) {
+export async function runCatalogSync(trigger='scheduled',autoPublish=true,requestId:string|null=null) {
   const db=await database();
   await loadApprovedHosts();
   await runRechecks();
@@ -46,8 +47,8 @@ export async function runCatalogSync(trigger='scheduled',autoPublish=true) {
     const outcomes:Outcome[]=[];
     let sourceError:string|null=null;
     let nextSearchCursor:number|null=null;
-    await db.query(`insert into public.scheme_catalog_runs(id,source_id,trigger_kind) values($1,$2,$3)`,
-      [source.lease_id,source.id,trigger]);
+    await db.query(`insert into public.scheme_catalog_runs(id,source_id,trigger_kind,request_id) values($1,$2,$3,$4)`,
+      [source.lease_id,source.id,trigger,requestId]);
     try {
       const read=createOfficialReader();
       const defaults=source.settings as Record<string,unknown>;
@@ -74,6 +75,7 @@ export async function runCatalogSync(trigger='scheduled',autoPublish=true) {
             ...document,originalTitle:document.originalTitle || metadata.title,
           });
           counters[capture.kind]++;
+          if (capture.version.review_disposition==='rejected') {outcomes.push({url:candidate.url,result:'rejected-by-review'});continue;}
           const draft=await generateVersion(capture.version.id);
           let published=false;
           if (draft.status==='generation_failed') {
@@ -122,7 +124,7 @@ export async function runCatalogSync(trigger='scheduled',autoPublish=true) {
 
 let job:Promise<void>|undefined;
 export function wakeCatalog(trigger:string,autoPublish=true) {
-  return job ??= runCatalogSync(trigger,autoPublish).finally(()=>{job=undefined;});
+  return job ??= (async()=>{await enqueueDiscovery(trigger,null,false,autoPublish);await processDiscoveryQueue();})().finally(()=>{job=undefined;});
 }
 export function scheduleCatalog() {
   if (!env.SCHEME_CATALOG_ENABLED || env.NODE_ENV==='test') return async ()=>{};

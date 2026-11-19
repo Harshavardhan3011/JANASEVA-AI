@@ -8,6 +8,7 @@ export function SchemeChecklist({id,items}:{id:string;items:string[]}) {
  const [busy,setBusy]=useState(false);
  const [message,setMessage]=useState('');
  useEffect(()=>{
+   setProgress({});setReady(false);setMessage('');setError('');
    const controller=new AbortController();
    api.get('/citizen-schemes/progress/'+id,{signal:controller.signal}).then(result=>{setProgress(result.data.data);setReady(true);})
      .catch(err=>{if (!controller.signal.aborted) setError(errorMessage(err));});

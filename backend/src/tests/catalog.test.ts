@@ -137,6 +137,14 @@ test('background import, validated publication, AP review, deduplication and fai
       const response=await actual(base+path,options);
       const json=await response.json() as {data:any};
       assert.equal(response.status,status,JSON.stringify(json).slice(0,900));
+      if (path==='/auth/register' && status===201) {
+        const input=JSON.parse(String(options?.body));
+        await db.query(`update public.users set email_verified_at=now(),registration_pending=false,
+          role=$2,admin_source=case when $2='admin' then 'invitation' else null end where email=$1`,
+          [input.email,input.email==='catalog@example.test'?'admin':'regular']);
+        const login=await actual(base+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:input.email,password:input.password})});
+        json.data=(await login.json() as {data:any}).data;
+      }
       return {data:json.data,headers:response.headers};
     }
     const {data:session}=await request('/auth/register',{
@@ -374,6 +382,8 @@ test('background import, validated publication, AP review, deduplication and fai
       body:JSON.stringify({name:'Impersonator',email:env.Adminmail,password:'FakePassword123!'})},403);
     await request('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({email:env.Adminmail,password:'WrongPassword'})},401);
+    await request('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:env.Adminmail,password:env.AdminPass})});
+    await db.query('update public.users set email_verified_at=now() where email=$1',[env.Adminmail]);
     const {data:adminSession}=await request('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({email:env.Adminmail,password:env.AdminPass})});
     assert.equal(adminSession.user.is_admin,true);

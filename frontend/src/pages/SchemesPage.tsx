@@ -36,7 +36,7 @@ export const SchemesPage=()=>{
    <section className="workflow-card">
      <form className="grid gap-3" onSubmit={event=>{event.preventDefault();setParams(input?{q:input}:{});}}>
        <label className="grid gap-2">Search schemes<input type="search" placeholder="Search schemes or ask a question" maxLength={1500} value={input} onChange={event=>setInput(event.target.value)}/></label>
-       <div className="inline-actions"><button className="primary-action">Search</button><Link className="secondary-action" to={'/assistant?q='+encodeURIComponent(input)}>Ask JANASEVA AI</Link></div>
+       <div className="inline-actions"><button className="primary-action">Search</button><Link className="secondary-action" to={'/ask?q='+encodeURIComponent(input)}>Ask JANASEVA AI</Link></div>
      </form>
      <div className="grid gap-3 pt-4 sm:grid-cols-3">
        <label className="grid gap-2">State or UT<select value={state} onChange={event=>setState(event.target.value)}><option value="">All</option>

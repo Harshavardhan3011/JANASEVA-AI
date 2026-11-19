@@ -30,17 +30,19 @@ For bundled Chromium on Windows set `BROWSER_CHANNEL=bundled` in the root `.env`
 
 ## Find schemes and use your dashboard
 
-Visitors can search at `/schemes` and ask questions at `/assistant`. Search checks published names, aliases, categories and locations. The assistant selects relevant database records with the existing AI provider and falls back to deterministic catalog search if that provider is unavailable. It cites the official source, states missing requirements and avoids confirming an application window from an old catalog date.
+Visitors can search at `/schemes` and ask questions at `/ask` (the `/assistant` link still redirects). Search checks published names, aliases, categories and locations. The assistant selects relevant database records with the existing AI provider and falls back to deterministic catalog search if that provider is unavailable. It cites the official source, states missing requirements and avoids confirming an application window from an old catalog date.
 
 Sign in to use `/dashboard`. The optional profile stores state, district, occupation, age range and income range. Recommendations explain coverage and occupation matches. Other eligibility conditions remain subject to the official guideline. Save or remove schemes, check verified upcoming deadlines, follow publication changes and keep a personal document/application-step checklist on each detail page. Existing guided applications remain at their original URLs.
 
 ## Sources and deployment
 
-The source registry at `/schemes/admin` includes myScheme, its State/UT directory, India.gov.in, IGOD, DBT Bharat, NSP listings and student announcements, JanSamarth, and PIB. Review-key authentication protects registry changes, sync and publication. Access-pending portals are listed with their intended purpose and are disabled until the supported automated access method is verified. myScheme requires written authorization and an API integration.
+The source registry at `/admin/sources` includes myScheme, its State/UT directory, India.gov.in, IGOD, DBT Bharat, NSP listings and student announcements, JanSamarth, and PIB. Verified administrator sessions protect registry changes, sync and publication. Access-pending portals are listed with their intended purpose and are disabled until the supported automated access method is verified. myScheme requires written authorization and an API integration.
 
 Run `npm run db:migrate` against the hosted database before deploying this update. Migration `009_scheme_finder.sql` adds source registration, recheck requests, optional profile fields, aliases and personal checklist progress. Existing records and public scheme IDs are preserved.
 
-The Render sync Blueprint runs daily at 02:00 UTC (07:30 India time). It checks due sources independently of site visitors. Deploy the separate `Dockerfile.scheme-sync` service against the same database and configure its existing AI and search credentials. An existing Render cron service must have its schedule updated in Render or through its Blueprint. The local checkout cannot confirm that a hosted scheduler is running. See [source access and operations](docs/government-schemes.md).
+The Render sync Blueprint runs daily at 02:00 UTC (07:30 India time). It checks due sources independently of site visitors. Deploy the separate `Dockerfile.scheme-sync` service against the same database and configure its existing AI and search credentials. An existing Render cron service must have its schedule updated in Render or through its Blueprint. The local checkout cannot confirm that a hosted scheduler is running. See [source access and operations](docs/government-schemes.md). A daily GitHub Actions worker is also configured for the existing Render Free deployment, which has no cron service yet; activate its repository secrets before relying on unattended syncing.
+
+See the [final dashboard route map, migrations, scheduler setup and verification report](docs/role-dashboards.md).
 
 ## Verify or deploy
 

@@ -1,5 +1,7 @@
 # Hosted setup
 
+For login, email verification and password recovery, complete [SMTP setup](email-auth.md) before deploying the authentication update.
+
 The Dockerfile packages the Express API, the mock portal, Playwright Chromium and its native dependencies. The portal listens on loopback in the production container. Deploy a single worker with persistent storage mounted at `/app/.data` for demo receipts. Configure the container read/health check at `/api/v1/ready`.
 
 1. Create a Supabase project for JANASEVA AI. Set `DATABASE_URL` in the root environment file with a TLS-enabled direct database or session-pooler connection. Run `npm run db:migrate` from the project root after installing backend dependencies. The migrator records applied files and seeds the active scheme.

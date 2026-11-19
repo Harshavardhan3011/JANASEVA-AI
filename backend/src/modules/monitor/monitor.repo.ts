@@ -1,3 +1,4 @@
+import { audit } from '../catalog/catalog.audit';
 import { createHash } from 'node:crypto';
 import { database, Database } from '../../config/db';
 import { AppError } from '../../shared/errors';
@@ -54,6 +55,7 @@ async function publish(db: Database, item: Item, reviewedDraft: Draft, actor: st
   await db.query(`update public.scheme_monitor_items set
     status='published', draft=$2, reviewed_by=$3, scheme_id=$4, resolved_at=now()
     where id=$1`,[item.id,JSON.stringify(draft),actor,scheme.id]);
+  await audit(db,actor,'notice.published','notice',item.id,'Published reviewed notice against official evidence.');
   return scheme.id;
 }
 
@@ -93,13 +95,14 @@ export async function saveObservation(source: Source, observation: Observation, 
   });
 }
 
-export async function reviewItem(id: string, actor: string, reviewedDraft?: Draft) {
+export async function reviewItem(id: string, actor: string, reviewedDraft?: Draft,reason='Reviewed official notice evidence.') {
   return (await database()).transaction(async db=>{
     await db.query(`select s.id from public.scheme_monitor_sources s join public.scheme_monitor_items i
       on i.source_id=s.id where i.id=$1 for update of s`,[id]);
     const { rows:[item] }=await db.query<Item>('select * from public.scheme_monitor_items where id=$1 for update',[id]);
     if (!item) throw AppError.notFound('Notice not found.');
     if (item.status!=='pending') throw AppError.conflict('This notice is no longer awaiting review.');
+    await audit(db,actor,reviewedDraft?'notice.approved':'notice.rejected','notice',id,reason);
     if (reviewedDraft) {
       const { rows:[existing] }=await db.query<{id:string}>(`
         select id from public.schemes where status='ACTIVE' and monitor_ref is distinct from $1

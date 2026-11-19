@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
 
@@ -24,6 +24,7 @@ type RegisterFormData = z.infer<typeof registerSchema>;
 export const RegisterPage: React.FC = () => {
   const { register: registerAuth } = useAuth();
   const navigate = useNavigate();
+  const [params]=useSearchParams();
   const [serverError, setServerError] = useState<string | null>(null);
 
   const {
@@ -40,8 +41,8 @@ export const RegisterPage: React.FC = () => {
   const onSubmit = async (data: RegisterFormData) => {
     try {
       setServerError(null);
-      await registerAuth(data.name, data.email, data.password, data.preferred_language);
-      navigate('/dashboard');
+      const result=await registerAuth(data.name, data.email, data.password, data.preferred_language);
+      navigate('/check-email?email='+encodeURIComponent(data.email.trim().toLowerCase())+'&next='+encodeURIComponent(params.get('next') || '/dashboard'),{state:{cooldown:result.cooldown,deliveryFailed:!result.sent}});
     } catch (err: any) {
       setServerError(err.message || 'Registration failed. Please try again.');
     }

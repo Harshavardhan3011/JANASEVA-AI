@@ -10,7 +10,8 @@ import { successResponse } from '../../shared/response';
 import { createOfficialReader, extractPdf, readDocument } from './catalog.fetch';
 import { captureDocument, editDraft, generateVersion, publishVersion } from './catalog.repo';
 import { descriptionSchema, metadataSchema, officialSourceUrl } from './catalog.types';
-import { wakeCatalog } from './catalog.job';
+import { enqueueDiscovery, processDiscoveryQueue } from './catalog.queue';
+import { audit } from './catalog.audit';
 import { loadApprovedHosts, registryInput } from './catalog.registry';
 import { searchPublishers } from './catalog.publishers';
 import { hasSearchKey } from './catalog.search';
@@ -57,6 +58,7 @@ router.put('/registry/:id',async(req,res)=>{
       department=excluded.department,access_method=excluded.access_method,access_note=excluded.access_note,
       approved=excluded.approved,checked_at=now()`,
       [item.id,item.label,item.url,item.purpose,item.jurisdiction,item.department,item.access_method,item.access_note,item.approved]);
+    await audit(db,req.user!.id,'source.registry.saved','source',item.id,'Updated official access method and coverage: '+item.access_note);
     // Feed and arbitrary API contracts need a dedicated parser.
     if (item.approved && ['listing','document'].includes(item.access_method)) {
       await db.query(`insert into public.scheme_catalog_sources(id,label,url,kind,settings,interval_minutes)
@@ -82,7 +84,7 @@ router.post('/import',upload.single('officialPdf'),async(req,res)=>{
   }
   // Uploaded files require the reviewer to compare the captured text with the official copy.
   const sourceMeta=req.file ? {...metadata,reviewNote:'Compare the uploaded PDF with its official source before publishing.'} : metadata;
-  const captured=await captureDocument(sourceMeta,document);
+  const captured=await captureDocument(sourceMeta,document,req.user!.id);
   const version=captured.kind==='skipped' ? captured.version : await generateVersion(captured.version.id);
   successResponse(res,{result:captured.kind,version});
 });
@@ -98,7 +100,7 @@ router.get('/versions/:id',async(req,res)=>{
   successResponse(res,row);
 });
 router.put('/versions/:id',async(req,res)=>{
-  await editDraft(z.uuid().parse(req.params.id),descriptionSchema.parse(req.body));
+  await editDraft(z.uuid().parse(req.params.id),descriptionSchema.parse(req.body),req.user!.id);
   successResponse(res,{saved:true});
 });
 router.post('/versions/:id/retry',async(req,res)=>{
@@ -108,11 +110,10 @@ router.post('/versions/:id/publish',async(req,res)=>{
   z.object({verified:z.literal(true)}).parse(req.body);
   successResponse(res,{scheme_id:await publishVersion(z.uuid().parse(req.params.id),req.user!.id)});
 });
-router.post('/sync',async(_req,res)=>{
-  await (await database()).query(`update public.scheme_catalog_sources set next_check_at=now()
-    where enabled and (lease_until is null or lease_until<now())`);
-  void wakeCatalog('admin').catch(error=>console.error('Scheme catalog sync:',error.message));
-  successResponse(res,{queued:true},202);
+router.post('/sync',async(req,res)=>{
+  const request=await enqueueDiscovery('admin',req.user!.id,true);
+  if (process.env.NODE_ENV!=='test') void processDiscoveryQueue().catch(()=>{});
+  successResponse(res,{queued:true,request},202);
 });
 router.patch('/sources/:id',async(req,res)=>{
   const id=z.string().max(100).parse(req.params.id);

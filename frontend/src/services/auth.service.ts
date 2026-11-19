@@ -1,14 +1,21 @@
 import { api } from './api';
 import { User, ApiResponse } from '../types';
 
+export class VerificationRequiredError extends Error {
+ constructor(public email:string,public cooldown=60) {super('Verify your email to continue.');}
+}
+export interface VerificationResponse {verification_required:true;email:string;sent:boolean;cooldown:number}
 export interface AuthResponseData {
+  verification_required?:boolean;
+  email?:string;
+  cooldown?:number;
   user: User;
   token: string;
 }
 
 export const authService = {
   async register(name: string, email: string, password: string, preferred_language = 'en') {
-    const response = await api.post<ApiResponse<AuthResponseData>>('/auth/register', {
+    const response = await api.post<ApiResponse<VerificationResponse>>('/auth/register', {
       name,
       email,
       password,

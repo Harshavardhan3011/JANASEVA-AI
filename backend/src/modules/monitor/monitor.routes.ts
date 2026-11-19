@@ -81,9 +81,9 @@ router.post('/review/run',async (_req,res)=>{
 router.post('/review/:id',async (req,res)=>{
   const id=z.uuid().parse(req.params.id);
   const action=z.discriminatedUnion('action',[
-    z.object({action:z.literal('publish'),draft:publishSchema}),
-    z.object({action:z.literal('reject')}),
+    z.object({action:z.literal('publish'),draft:publishSchema,reason:z.string().trim().min(5).max(1000)}),
+    z.object({action:z.literal('reject'),reason:z.string().trim().min(5).max(1000)}),
   ]).parse(req.body);
-  successResponse(res,await reviewItem(id,req.user!.id,action.action==='publish' ? action.draft : undefined));
+  successResponse(res,await reviewItem(id,req.user!.id,action.action==='publish' ? action.draft : undefined,action.reason));
 });
 export default router;

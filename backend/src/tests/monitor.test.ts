@@ -43,6 +43,12 @@ test('scheme monitor publishes official changes, queues announcements and review
     const response=await actualFetch(base+path,options);
     const result=await response.json() as { data:any };
     assert.equal(response.status,status,JSON.stringify(result));
+    if (path==='/auth/register' && status===201) {
+      const input=JSON.parse(String(options?.body));
+      await (await database()).query('update public.users set email_verified_at=now(),registration_pending=false where email=$1',[input.email]);
+      const login=await actualFetch(base+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:input.email,password:input.password})});
+      return (await login.json() as {data:any}).data;
+    }
     return result.data;
   }
 
@@ -65,6 +71,7 @@ test('scheme monitor publishes official changes, queues announcements and review
     const token={ Authorization:'Bearer '+user.token };
     const headers={...token,'x-scheme-monitor-key':key};
     await request('/scheme-monitor/review',{headers:token},403);
+    await (await database()).query("update public.users set role='admin',admin_source='invitation' where email='reviewer@example.test'");
     const queue=await request('/scheme-monitor/review',{headers});
     assert.equal(queue.length,1);
     assert.equal(queue[0].draft.title,'Ministry announces a new pension scheme');
@@ -102,7 +109,7 @@ test('scheme monitor publishes official changes, queues announcements and review
     assert.equal(attachment.headers.get('content-type'),'image/png');
     const approval=await request('/scheme-monitor/review/'+notice.id,{
       method:'POST',headers:{...headers,'Content-Type':'application/json'},
-      body:JSON.stringify({action:'publish',draft:{...pending.draft,sourceUrl:'https://rangareddy.telangana.gov.in/schemes/'}}),
+      body:JSON.stringify({action:'publish',reason:'Verified submitted notice evidence.',draft:{...pending.draft,sourceUrl:'https://rangareddy.telangana.gov.in/schemes/'}}),
     });
     assert.equal(approval.status,'published');
     const published=await request('/schemes/'+approval.scheme_id);

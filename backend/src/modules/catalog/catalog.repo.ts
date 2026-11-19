@@ -1,3 +1,4 @@
+import { audit } from './catalog.audit';
 import { createHash,randomUUID } from 'node:crypto';
 import { database, Database } from '../../config/db';
 import { AppError } from '../../shared/errors';
@@ -13,6 +14,8 @@ export interface Version {
   id:string; import_id:string; source_text:string; source_url:string; original_title:string; fingerprint:string;
   metadata:ImportMetadata & { applyUrl:string|null; incomplete:boolean };
   description:SchemeDescription|null; status:'draft'|'generation_failed'|'published';
+  requires_admin_review?:boolean;
+  review_disposition?:'pending'|'approved'|'rejected';
   error:string|null; generation_attempts:number; retry_at:Date|string|null;
 }
 
@@ -22,7 +25,7 @@ async function lockImport(db:Database,id:string) {
   return row;
 }
 
-export async function captureDocument(meta:ImportMetadata,document:SourceDocument) {
+export async function captureDocument(meta:ImportMetadata,document:SourceDocument,actor:string|null=null) {
   const canonical=canonicalSource(document.url);
   const authority=new URL(canonical).hostname.replace(/^www\./,'');
   const legacyKey=meta.officialId ? authority+':'+meta.officialId.toUpperCase() : null;
@@ -45,10 +48,11 @@ export async function captureDocument(meta:ImportMetadata,document:SourceDocumen
       'select * from public.scheme_catalog_versions where id=$1',[entry.current_version]) : {rows:[]};
     if (previous?.fingerprint===hash) return { kind:'skipped' as const, version:previous };
     const { rows:[version] }=await db.query<Version>(`
-      insert into public.scheme_catalog_versions(import_id,original_title,source_url,source_text,fingerprint,metadata)
-      values($1,$2,$3,$4,$5,$6) returning *
-    `,[entry.id,document.originalTitle,document.url,document.text,hash,JSON.stringify(metadata)]);
+      insert into public.scheme_catalog_versions(import_id,original_title,source_url,source_text,fingerprint,metadata,requires_admin_review)
+      values($1,$2,$3,$4,$5,$6,$7) returning *
+    `,[entry.id,document.originalTitle,document.url,document.text,hash,JSON.stringify(metadata),Boolean(actor)]);
     await db.query('update public.scheme_catalog_imports set current_version=$2 where id=$1',[entry.id,version.id]);
+    await audit(db,actor,previous?'scheme.source.changed':'scheme.source.added','version',version.id,'Captured official source evidence.');
     return { kind:previous ? 'changed' as const : 'added' as const,version };
   });
 }
@@ -57,7 +61,7 @@ export async function generateVersion(id:string,force=false) {
   const db=await database();
   const { rows:[original] }=await db.query<Version>('select * from public.scheme_catalog_versions where id=$1',[id]);
   if (!original) throw AppError.notFound('Draft not found.');
-  if (original.status==='published' || (!force && original.description && original.status==='draft')) return original;
+  if (original.review_disposition==='rejected' || original.status==='published' || (!force && original.description && original.status==='draft')) return original;
   const token=randomUUID();
   const { rows:[current] }=await db.query<Version>(`
     update public.scheme_catalog_versions v set generation_attempts=generation_attempts+1,
@@ -91,13 +95,14 @@ export async function generateVersion(id:string,force=false) {
   }
 }
 
-export async function editDraft(id:string,description:SchemeDescription) {
+export async function editDraft(id:string,description:SchemeDescription,actor:string|null=null) {
   return (await database()).transaction(async db=>{
     const version=await currentDraft(db,id);
     const validation=verifyDescription(description,version.source_text);
     if (validation.problems.length) throw AppError.badRequest(validation.problems.join(' '));
-    await db.query(`update public.scheme_catalog_versions set description=$2,status='draft',error=null
+    await db.query(`update public.scheme_catalog_versions set description=$2,status='draft',error=null,review_disposition='pending',requires_admin_review=true
       where id=$1`,[id,JSON.stringify(description)]);
+    await audit(db,actor,'scheme.draft.edited','version',id,'Edited draft against official evidence.');
   });
 }
 
@@ -114,15 +119,16 @@ async function currentDraft(db:Database,id:string) {
   return version;
 }
 
-export async function publishVersion(id:string,actor:string|null) {
+export async function publishVersion(id:string,actor:string|null,reason='Verified description against official evidence.') {
   return (await database()).transaction(async db=>{
     const version=await currentDraft(db,id);
     const entry=await lockImport(db,version.import_id);
+    if (version.review_disposition==='rejected') throw AppError.conflict('This draft was rejected. Edit it before requesting publication.');
     const draft=version.description;
     if (!draft?.overview.length) throw AppError.badRequest('Add an overview supported by the official material before publishing.');
     const validation=verifyDescription(draft,version.source_text);
     if (validation.problems.length) throw AppError.badRequest(validation.problems.join(' '));
-    if (!actor && (draft.reviewIssues.length || version.metadata.incomplete ||
+    if (!actor && (version.requires_admin_review || draft.reviewIssues.length || version.metadata.incomplete ||
       /list of schemes|older amounts|rather than define|uploaded PDF/i.test(version.metadata.reviewNote || ''))) return null;
 
     let schemeId=entry.scheme_id;
@@ -158,7 +164,7 @@ export async function publishVersion(id:string,actor:string|null) {
     }
     await db.query(`update public.scheme_catalog_imports set scheme_id=$2,published_version=$3 where id=$1`,
       [entry.id,schemeId,id]);
-    await db.query(`update public.scheme_catalog_versions set status='published',verified_at=now(),reviewed_by=$2,error=null
+    await db.query(`update public.scheme_catalog_versions set status='published',verified_at=now(),reviewed_by=$2,error=null,review_disposition='approved'
       where id=$1`,[id,actor]);
     await db.query(`insert into public.scheme_catalog_sources(id,label,url,kind,settings,interval_minutes,next_check_at)
       values($1,$2,$3,'document',$4,1440,now()+interval '1 day') on conflict(id) do update set
@@ -168,6 +174,8 @@ export async function publishVersion(id:string,actor:string|null) {
         officialId:meta.officialId,aliases:meta.aliases,district:meta.district,coverageLevel:meta.coverageLevel,
         applicationPortalSource:meta.applicationPortalSource,reviewNote:meta.reviewNote,
       })]);
+    if (actor) await db.query("update public.schemes set status='ACTIVE' where id=$1",[schemeId]);
+    await audit(db,actor,'scheme.published','scheme',schemeId,reason);
     return schemeId;
   });
 }

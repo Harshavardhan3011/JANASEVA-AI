@@ -21,8 +21,10 @@ import documentsRoutes from './modules/documents/documents.routes';
 import monitorRoutes from './modules/monitor/monitor.routes';
 import citizenRoutes from './modules/citizen/citizen.routes';
 import catalogAdmin from './modules/catalog/catalog.admin';
+import dashboardAdmin from './modules/catalog/dashboard.admin';
 
 const app: Application = express();
+if (env.TRUST_PROXY_HOPS) app.set('trust proxy',env.TRUST_PROXY_HOPS);
 
 // Security & Parsing Middleware
 app.use(helmet({ crossOriginResourcePolicy: false }));
@@ -51,6 +53,7 @@ app.use('/api/v1/assistant', assistantRoutes);
 app.use('/api/v1/documents', documentsRoutes);
 app.use('/api/v1/scheme-monitor', monitorRoutes);
 app.use('/api/v1/scheme-catalog-admin',catalogAdmin);
+app.use('/api/v1/admin',dashboardAdmin);
 app.use('/api/v1/citizen-schemes',citizenRoutes);
 app.use('/api/v1', healthRoutes);
 

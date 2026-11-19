@@ -1,3 +1,4 @@
+import { AccountMenu } from '../components/AccountMenu';
 import { Link,Outlet } from 'react-router-dom';
 import { AppLayout } from './AppLayout';
 import { useAuth } from '../hooks/useAuth';
@@ -10,9 +11,9 @@ export const SchemeLayout=()=>{
       <nav className="civic-shell flex flex-wrap items-center gap-4 py-4">
         <Link to="/" className="font-extrabold text-slate-900">JANASEVA AI</Link>
         <Link to="/schemes" className="ml-auto text-sm font-semibold">Explore Schemes</Link>
-        <Link to="/assistant" className="text-sm font-semibold">Ask AI</Link>
+        <Link to="/ask" className="text-sm font-semibold">Ask AI</Link>
         <Link to="/dashboard" className="text-sm font-semibold">Dashboard</Link>
-        <Link to="/login" className="secondary-action">Sign in</Link>
+        <AccountMenu/>
       </nav>
     </header>
     <main className="civic-shell flex-1 min-h-0 overflow-y-auto py-5 sm:py-8"><Outlet/></main>

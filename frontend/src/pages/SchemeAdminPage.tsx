@@ -1,6 +1,6 @@
 import { useEffect,useState } from 'react';
 import type { FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { Link,useSearchParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { api } from '../services/api';
 import { errorMessage } from '../services/workflow';
@@ -25,9 +25,12 @@ function ClaimInput({ claim,onChange }:{claim:Claim;onChange:(value:Claim)=>void
   </div>;
 }
 
-export const SchemeAdminPage=()=>{
+export const SchemeAdminPage=({section='editor'}:{section?:'editor'|'sources'})=>{
+  const [params]=useSearchParams();
+  const selectedVersion=params.get('version');
+  const [reason,setReason]=useState('');
+  const [registryEdit,setRegistryEdit]=useState<Registry>();
   const {user}=useAuth();
-  const [key,setKey]=useState('');
   const [dashboard,setDashboard]=useState<Dashboard>();
   const [version,setVersion]=useState<Version>();
   const [draft,setDraft]=useState<Description>(emptyDescription);
@@ -35,7 +38,7 @@ export const SchemeAdminPage=()=>{
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
   const [message,setMessage]=useState('');
-  const config={headers:{'x-scheme-monitor-key':key}};
+  const config={};
   async function loadDashboard() {
     setDashboard((await api.get<{data:Dashboard}>(endpoint,config)).data.data);
   }
@@ -59,16 +62,23 @@ export const SchemeAdminPage=()=>{
       .catch(err=>{if (!controller.signal.aborted) setError(errorMessage(err));});
     return ()=>controller.abort();
   },[user?.is_admin]);
+  useEffect(()=>{
+    if (!selectedVersion || !user?.is_admin) return;
+    const controller=new AbortController();setVersion(undefined);
+    api.get<{data:Version}>(endpoint+'/versions/'+selectedVersion,{signal:controller.signal}).then(result=>{setVersion(result.data.data);setDraft({...emptyDescription(),...result.data.data.description});setVerified(false);})
+      .catch(err=>{if (!controller.signal.aborted) setError(errorMessage(err));});
+    return ()=>controller.abort();
+  },[selectedVersion,user?.is_admin]);
   const unlocked=Boolean(dashboard);
   useEffect(()=>{
     if (!unlocked) return;
     const controller=new AbortController();
     const timer=window.setInterval(()=>{
-      api.get<{data:Dashboard}>(endpoint,{signal:controller.signal,headers:{'x-scheme-monitor-key':key}})
+      api.get<{data:Dashboard}>(endpoint,{signal:controller.signal})
         .then(result=>setDashboard(result.data.data)).catch(()=>{});
     },10000);
     return ()=>{clearInterval(timer);controller.abort();};
-  },[unlocked,key]);
+  },[unlocked]);
   function submitImport(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form=event.currentTarget;
@@ -85,33 +95,27 @@ export const SchemeAdminPage=()=>{
   function updateClaim(section:Section,index:number,claim:Claim) {
     setDraft(current=>({...current,[section]:(current[section] || []).map((item,i)=>i===index?claim:item)}));
   }
+  if (!user?.is_admin) return <p role="alert">Administrator sign-in is required to manage sources and publishing.</p>;
   return <div className="workflow">
     <Link className="back-link" to="/schemes">← Schemes</Link>
-    <header className="workflow-heading"><div><h1>Government schemes administration</h1><p>Import official material, review changes, and monitor scheduled syncs.</p></div></header>
+    <header className="workflow-heading"><div><h1>{section==='sources'?'Official sources':'Scheme evidence and editor'}</h1><p>Import official material, review changes, and monitor scheduled syncs.</p></div></header>
     {error ? <p role="alert" className="workflow-error">{error}</p> : null}
     {message ? <p role="status">{message}</p> : null}
-    {!user?.is_admin && <section className="workflow-card">
-      <form className="inline-actions" onSubmit={event=>{event.preventDefault();void act(loadDashboard);}}>
-        <label className="grid gap-1">Monitor review key<input type="password" autoComplete="off" value={key} disabled={busy}
-          onChange={event=>{setKey(event.target.value);setDashboard(undefined);setVersion(undefined);}} required/></label>
-        <button className="secondary-action" disabled={busy}>{dashboard?'Refresh dashboard':'Unlock administration'}</button>
-      </form>
-    </section>}
     {dashboard ? <>
-      <section className="workflow-card"><h2>Official source registry</h2>
+      {section==='sources' && <><section className="workflow-card"><h2>Official source registry</h2>
         <p>Confirm the access method and publisher terms before approving a source. Feed and API contracts require a dedicated connector.</p>
-        <details><summary>Add an official source</summary><form className="grid gap-3 pt-3" onSubmit={event=>{
+        <details open={Boolean(registryEdit)||undefined}><summary>{registryEdit?'Edit official source':'Add an official source'}</summary><form key={registryEdit?.id || 'new'} className="grid gap-3 pt-3" onSubmit={event=>{
           event.preventDefault();const values=Object.fromEntries(new FormData(event.currentTarget));
           void act(async()=>{await api.put(endpoint+'/registry/'+values.id,{...values,approved:values.approved==='on'},config);await loadDashboard();setMessage('Registry saved.');});
         }}>
-          {['id','label','url','purpose','jurisdiction','department','access_note'].map(field=><label className="grid gap-1" key={field}>{field.replace('_',' ')}<input name={field} required maxLength={field==='access_note'?1000:500}/></label>)}
-          <label>Access method<select name="access_method"><option value="manual_review">Manual review</option><option value="listing">Permitted public listing</option><option value="document">Official document</option><option value="feed">Feed</option><option value="api">API</option></select></label>
-          <label><input name="approved" type="checkbox"/>I verified permitted automated access for this source.</label>
-          <button className="secondary-action" disabled={busy}>Save source</button>
+          {['id','label','url','purpose','jurisdiction','department','access_note'].map(field=><label className="grid gap-1" key={field}>{field.replace('_',' ')}<input name={field} defaultValue={String(registryEdit?.[field as keyof Registry] ?? '')} readOnly={field==='id' && Boolean(registryEdit)} required maxLength={field==='access_note'?1000:500}/></label>)}
+          <label>Access method<select name="access_method" defaultValue={registryEdit?.access_method || 'manual_review'}><option value="manual_review">Manual review</option><option value="listing">Permitted public listing</option><option value="document">Official document</option><option value="feed">Feed</option><option value="api">API</option></select></label>
+          <label><input name="approved" type="checkbox" defaultChecked={registryEdit?.approved || false}/>I verified permitted automated access for this source.</label>
+          <button className="secondary-action" disabled={busy}>Save source</button><button type="button" onClick={()=>setRegistryEdit(undefined)}>Clear form</button>
         </form></details>
-        <div className="space-y-3 pt-3">{dashboard.registry?.map(source=><article key={source.id} className="rounded border border-slate-200 p-3">
+        <div className="space-y-3 pt-3">{dashboard.registry?.filter(source=>params.get('access')!=='pending' || !source.approved).map(source=><article key={source.id} className="rounded border border-slate-200 p-3">
           <a className="underline font-bold" href={source.url} target="_blank" rel="noreferrer">{source.label}</a>
-          <p>{source.purpose}</p><p>{source.jurisdiction} · {source.department} · {source.access_method} · {source.approved?'Approved':'Access review required'}</p><p>{source.access_note}</p>
+          <button className="secondary-action" onClick={()=>setRegistryEdit(source)}>Edit source</button><p>{source.purpose}</p><p>{source.jurisdiction} · {source.department} · {source.access_method} · {source.approved?'Approved':'Access review required'}</p><p>{source.access_note}</p>
         </article>)}</div>
         <details className="mt-4"><summary>Jurisdiction and department coverage</summary>
           <p>Counts show registered sources and access approval. Zero means a source still needs to be added.</p>
@@ -121,12 +125,10 @@ export const SchemeAdminPage=()=>{
       </section>
       <section className="workflow-card">
         <div className="section-heading"><div><h2>Sources and sync runs</h2></div>
-          <button className="secondary-action" disabled={busy} onClick={()=>void act(async()=>{
-            await api.post(endpoint+'/sync',{},config);setMessage('Checks queued. Results update on this page.');
-          })}>Sync now</button>
+          <Link className="secondary-action" to="/admin/discovery">Discovery and sync</Link>
         </div>
         <div className="divide-y divide-slate-200">
-          {dashboard.sources.map(source=><article className="py-3" key={source.id}>
+          {dashboard.sources.filter(source=>params.get('health')!=='failing' || source.last_error).map(source=><article className="py-3" key={source.id}>
             <a className="font-bold text-teal-800 underline" href={source.url} target="_blank" rel="noreferrer">{source.label}</a>
             <p className="text-sm">Last checked: {source.last_checked_at ? new Date(source.last_checked_at).toLocaleString() : 'Pending'} · Last successful sync: {source.last_success_at ? new Date(source.last_success_at).toLocaleString() : 'Pending'}</p>
             {source.last_error ? <p className="text-sm text-red-800">{source.last_error}</p> : null}
@@ -153,7 +155,8 @@ export const SchemeAdminPage=()=>{
           </article>)}
         </details>
       </section>
-      <section className="workflow-card">
+      </>}
+      {section==='editor' && <>{!selectedVersion && <><section className="workflow-card">
         <h2>Import a scheme</h2><p>Use a supported official URL. If automated access fails, attach the official PDF.</p>
         <form onSubmit={submitImport}>
           <div className="input-grid">
@@ -178,6 +181,7 @@ export const SchemeAdminPage=()=>{
           </div>{item.error ? <p className="text-sm">{item.error}</p> : null}
         </li>)}</ul> : <p>No schemes have been imported.</p>}
       </section>
+      </>}
       {version ? <section className="workflow-card">
         <h2>{version.metadata.title}</h2>
         <p><a className="text-teal-800 underline" href={version.source_url} target="_blank" rel="noreferrer">{version.original_title}</a></p>
@@ -217,18 +221,20 @@ export const SchemeAdminPage=()=>{
           </label>
           {draft.statusEvidence ? <ClaimInput claim={draft.statusEvidence} onChange={claim=>setDraft(current=>({...current,statusEvidence:claim}))}/> : null}
           {version.status!=='published' ? <>
+            <label className="grid gap-2 mt-3">Review reason<textarea value={reason} minLength={5} maxLength={1000} onChange={event=>setReason(event.target.value)}/></label>
             <label className="approval-check"><input type="checkbox" checked={verified} onChange={event=>setVerified(event.target.checked)}/>I verified the public description against the official source.</label>
             <div className="inline-actions mt-4">
               <button className="secondary-action" onClick={()=>void act(async()=>{await api.put(path,draft,config);setMessage('Draft saved.');await loadDashboard();})}>Save draft</button>
-              <button className="primary-action !mt-0" disabled={!verified} onClick={()=>void act(async()=>{
+              <button className="primary-action !mt-0" disabled={!verified || reason.trim().length<5} onClick={()=>void act(async()=>{
                 await api.put(path,draft,config);
-                await api.post(path+'/publish',{verified:true},config);await open(version.id);await loadDashboard();
+                await api.post('/admin/review/'+version.id,{action:'approve',reason},config);await open(version.id);await loadDashboard();
                 setMessage('Scheme published.');
               })}>Publish verified version</button>
+              <button className="secondary-action" disabled={reason.trim().length<5} onClick={()=>void act(async()=>{await api.post('/admin/review/'+version.id,{action:'reject',reason});setMessage('Change rejected. Published version preserved.');await loadDashboard();})}>Reject change</button>
             </div>
           </> : null}
         </fieldset>
-      </section> : null}
+      </section> : null}</>}
     </> : null}
   </div>;
 };

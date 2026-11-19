@@ -1,5 +1,5 @@
 import { useEffect,useState } from 'react';
-import { Link,useParams } from 'react-router-dom';
+import { Link,useParams,useSearchParams } from 'react-router-dom';
 import { ArrowLeft,ArrowUpRight } from 'lucide-react';
 import { SchemeChecklist } from '../components/SchemeChecklist';
 import { useAuth } from '../hooks/useAuth';
@@ -20,6 +20,7 @@ interface Detail {
 
 export const SchemeDetailPage=()=>{
   const {id}=useParams();
+  const [params,setParams]=useSearchParams();
   const {user}=useAuth();
   const [refreshMessage,setRefreshMessage]=useState('');
   const [actionError,setActionError]=useState('');
@@ -36,6 +37,15 @@ export const SchemeDetailPage=()=>{
     return ()=>controller.abort();
   },[id]);
 
+  useEffect(()=>{
+    if (!user || !id || params.get('save')!=='1') return;
+    let active=true;
+    api.put('/citizen-schemes/watches/'+id).then(()=>{
+      if (!active) return;
+      setFollowing(true);setParams({}, {replace:true});
+    }).catch(err=>{if (active) setActionError(errorMessage(err));});
+    return ()=>{active=false;};
+  },[id,user,params,setParams]);
   const legacy:Partial<Record<Section,string|null>>=entry?.detail || !entry ? {} : {
     overview:entry.description, benefits:entry.benefits_summary, eligibility:entry.eligibility_summary,
     dates:entry.application_deadline ? 'Recorded cycle '+(entry.application_cycle || 'unspecified')+'. Current application window could not be verified. Check the official portal.' : null,
@@ -54,7 +64,7 @@ export const SchemeDetailPage=()=>{
             finally {setSaving(false);}
           }}>{following?'Following updates':saving?'Saving…':'Follow updates'}</button>
           <Link to="/my-schemes" className="secondary-action">My schemes and eligibility checklist</Link>
-        </div> : <Link to="/login" className="secondary-action">Sign in to follow updates</Link>}
+        </div> : <Link to={"/login?next="+encodeURIComponent("/schemes/"+id+"?save=1")} className="secondary-action">Log in to save</Link>}
       </section>
       <section className="workflow-card" aria-label="Official source">
         <div className="inline-actions"><button disabled={saving} className="secondary-action" onClick={async()=>{

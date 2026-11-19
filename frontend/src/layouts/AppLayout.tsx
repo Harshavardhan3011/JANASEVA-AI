@@ -1,3 +1,4 @@
+import { AccountMenu } from '../components/AccountMenu';
 import React, { useState } from 'react';
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -24,8 +25,9 @@ export const AppLayout: React.FC = () => {
 
   const navItems = [
     { to: '/schemes', label: 'Explore Schemes', icon: Landmark },
-    { to: '/assistant', label: 'Ask AI', icon: Bot },
+    { to: '/ask', label: 'Ask AI', icon: Bot },
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    ...(user?.is_admin?[{to:'/admin',label:'Administration',icon:ShieldCheck}]:[]),
   ];
 
   return (
@@ -91,6 +93,7 @@ export const AppLayout: React.FC = () => {
           })}
         </nav>
 
+        <div className="px-4 pb-4"><AccountMenu/></div>
         {/* User Card & Logout */}
         <div className="p-4 border-t border-slate-200 bg-slate-50/50">
           <div className="flex items-center justify-between">
@@ -116,10 +119,11 @@ export const AppLayout: React.FC = () => {
           <div className="flex items-center space-x-3">
             <span className="text-sm text-slate-500 font-normal">Active Session:</span>
             <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
-              Authenticated Citizen
+              {user?.is_admin?'Administrator':'Verified citizen'}
             </span>
           </div>
           <div className="flex items-center space-x-4">
+            <AccountMenu/>
             <span className="text-xs text-slate-500 font-mono">
               Language: {user?.preferred_language === 'te' ? 'తెలుగు' : 'English'}
             </span>

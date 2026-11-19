@@ -1,9 +1,11 @@
+import { safeDestination } from '../services/authDestination';
+import { VerificationRequiredError } from '../services/auth.service';
 import { api } from '../services/api';
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { AlertCircle, ArrowRight, Loader2 } from 'lucide-react';
 
@@ -17,6 +19,8 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location=useLocation();
+  const [params]=useSearchParams();
   const [serverError, setServerError] = useState<string | null>(null);
 
   const {
@@ -32,8 +36,12 @@ export const LoginPage: React.FC = () => {
       setServerError(null);
       await login(data.email, data.password);
       const sessionReply=await api.get('/auth/me');
-      navigate(sessionReply.data.user?.is_admin?'/schemes/admin':'/dashboard');
+      const isAdmin=Boolean(sessionReply.data.data.user?.is_admin);
+      const destination=safeDestination(params.get('next') || localStorage.getItem('janaseva_auth_next'),isAdmin?'/admin':'/dashboard',isAdmin);
+      navigate(isAdmin && destination==='/dashboard'?'/admin':destination);
+      localStorage.removeItem('janaseva_auth_next');
     } catch (err: any) {
+      if (err instanceof VerificationRequiredError) {navigate('/check-email?email='+encodeURIComponent(err.email)+'&next='+encodeURIComponent(safeDestination(params.get('next'))),{state:{cooldown:err.cooldown}});return;}
       setServerError(err.message || 'Login failed. Please verify your credentials.');
     }
   };
@@ -44,6 +52,7 @@ export const LoginPage: React.FC = () => {
         Sign in to your account
       </h2>
 
+      {location.state?.message && <p role="status" className="mb-4 text-emerald-700">{location.state.message}</p>}
       {serverError && (
         <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg flex items-start space-x-2">
           <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
@@ -94,10 +103,11 @@ export const LoginPage: React.FC = () => {
         </button>
       </form>
 
+      <Link to="/forgot-password" className="mt-3 block text-sm text-blue-600">Forgot password?</Link>
       <div className="mt-6 text-center text-sm text-slate-600">
         Don&apos;t have an account?{' '}
-        <Link to="/register" className="font-medium text-blue-600 hover:text-blue-500">
-          Register here
+        <Link to={"/register?next="+encodeURIComponent(safeDestination(params.get("next")))} className="font-medium text-blue-600 hover:text-blue-500">
+          Create an account
         </Link>
       </div>
     </div>

@@ -8,15 +8,17 @@ import { AppError } from '../shared/errors';
 
 const payload = z.object({ id: z.uuid(), email: z.email(), sid: z.uuid() });
 export async function authMiddleware(req: Request, res: Response, next: NextFunction) {
+  res.set('Cache-Control','no-store');
   const header = req.headers.authorization;
   if (!header?.startsWith('Bearer ')) throw AppError.unauthorized('Authentication token required');
   let session;
   try { session = payload.parse(jwt.verify(header.slice(7), await jwtSecret(), { algorithms: ['HS256'] })); }
   catch { throw AppError.unauthorized('Invalid or expired session'); }
   const { rows } = await (await database()).query(
-    'select id,admin_fingerprint from public.citizen_sessions where id=$1 and user_id=$2 and expires_at>now()', [session.sid,session.id]);
+    'select s.id,s.admin_fingerprint,u.email_verified_at,u.role,u.admin_source from public.citizen_sessions s join public.users u on u.id=s.user_id where s.id=$1 and s.user_id=$2 and s.expires_at>now()', [session.sid,session.id]);
   if (!rows.length) throw AppError.unauthorized('Session has ended');
-  res.locals.isAdmin=Boolean(rows[0].admin_fingerprint && rows[0].admin_fingerprint===adminFingerprint());
+  if (!rows[0].email_verified_at) throw new AppError('Verify your email before signing in.',403,'EMAIL_VERIFICATION_REQUIRED');
+  res.locals.isAdmin=Boolean(rows[0].admin_fingerprint && rows[0].admin_fingerprint===adminFingerprint()) || Boolean(rows[0].role==='admin' && rows[0].admin_source==='invitation');
   req.user = { id: session.id, email: session.email };
   res.locals.sessionId = session.sid;
   next();

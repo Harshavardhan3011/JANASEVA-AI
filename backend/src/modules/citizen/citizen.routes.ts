@@ -10,6 +10,11 @@ import type { SchemeDescription } from '../catalog/catalog.types';
 
 const router=Router();
 router.use(authMiddleware);
+router.use((req,_res,next)=>{
+  const requested=req.query.userId || req.query.user_id;
+  if (requested && requested!==req.user!.id) throw AppError.forbidden('Access to another account is denied.');
+  next();
+});
 router.use((_req,res,next)=>{res.set('Cache-Control','no-store');next();});
 const answer=z.enum(['met','unmet','unknown']);
 const assessment=z.object({versionId:z.uuid(),answers:z.record(z.string(),answer)}).strict();
@@ -19,8 +24,10 @@ router.get('/',async(req,res)=>{
   const user=req.user!.id;
   const [profile,watches,alerts,catalog]=await Promise.all([
     db.query('select state,details from public.citizen_scheme_profiles where user_id=$1',[user]),
-    db.query(`select w.scheme_id,i.published_version as version_id,v.description,v.source_url,
+    db.query(`select w.scheme_id,p.progress,s.scheme_name,s.description as stored_description,s.official_url,s.category,s.coverage_state,s.status as catalog_status,i.published_version as version_id,v.description,v.source_url,v.verified_at,v.metadata as published_metadata,
       a.version_id as assessed_version,a.answers from public.citizen_scheme_watches w
+      join public.schemes s on s.id=w.scheme_id
+      left join public.citizen_scheme_progress p on p.scheme_id=w.scheme_id and p.user_id=w.user_id
       left join public.scheme_catalog_imports i on i.scheme_id=w.scheme_id
       left join public.scheme_catalog_versions v on v.id=i.published_version
       left join public.citizen_scheme_assessments a on a.scheme_id=w.scheme_id and a.user_id=w.user_id
@@ -32,8 +39,8 @@ router.get('/',async(req,res)=>{
   ]);
   successResponse(res,{
     state:profile.rows[0]?.state || '',profile:profile.rows[0]?.details || {},alerts:alerts.rows,
-    recommendations:findSchemes(catalog,String(profile.rows[0]?.details?.occupation || ''),profile.rows[0]?.state || '').map(scheme=>({
-      ...scheme,deadline:verifiedDeadline(scheme),recommendation_note:'Age, income and other eligibility conditions still need checking.',
+    recommendations:findSchemes(catalog,[profile.rows[0]?.details?.occupation,profile.rows[0]?.details?.education].filter(Boolean).join(' '),profile.rows[0]?.state || '').map(scheme=>({
+      ...scheme,deadline:verifiedDeadline(scheme),match_label:'May match',recommendation_note:'Age, income and other eligibility conditions still need checking.',
     })),
     deadlines:catalog.filter(scheme=>watches.rows.some(watch=>watch.scheme_id===scheme.id)).flatMap(scheme=>{
       const deadline=verifiedDeadline(scheme);
@@ -41,7 +48,7 @@ router.get('/',async(req,res)=>{
     }),
     watches:watches.rows.map(watch=>({
       ...watch,description:watch.description ? {...watch.description,reviewIssues:undefined}:null,
-      scheme:catalog.find(scheme=>scheme.id===watch.scheme_id),
+      scheme:catalog.find(scheme=>scheme.id===watch.scheme_id) || {id:watch.scheme_id,scheme_name:watch.published_metadata?.title || watch.scheme_name,description:watch.description?.overview?.[0]?.text || watch.stored_description,official_url:watch.source_url || watch.official_url,category:watch.published_metadata?.category || watch.category,coverage_state:watch.published_metadata?.state || watch.coverage_state,last_verified_at:watch.verified_at,scheme_status:'unknown',catalog_status:watch.catalog_status},
       stale:Boolean(watch.assessed_version && watch.assessed_version!==watch.version_id),
       answers:watch.assessed_version===watch.version_id ? watch.answers : {},
     })),
@@ -52,11 +59,16 @@ router.put('/profile',async(req,res)=>{
     state:z.string().trim().max(120),district:z.string().trim().max(120).optional(),
     ageRange:z.enum(['','under18','18-25','26-40','41-60','over60']).optional(),
     incomeRange:z.enum(['','under1lakh','1-3lakh','3-5lakh','over5lakh']).optional(),
-    occupation:z.string().trim().max(120).optional(),
+    occupation:z.string().trim().max(120).optional(),education:z.string().trim().max(120).optional(),
   }).strict().parse(req.body);
   await (await database()).query(`insert into public.citizen_scheme_profiles(user_id,state,details) values($1,$2,$3)
-    on conflict(user_id) do update set state=excluded.state,details=excluded.details,updated_at=now()`,[req.user!.id,state,JSON.stringify(details)]);
+    on conflict(user_id) do update set state=excluded.state,details=citizen_scheme_profiles.details || excluded.details,updated_at=now()`,[req.user!.id,state,JSON.stringify(details)]);
   successResponse(res,{saved:true});
+});
+router.get('/watches/:id',async(req,res)=>{
+  const {rows:[watch]}=await (await database()).query('select scheme_id,created_at from public.citizen_scheme_watches where user_id=$1 and scheme_id=$2',[req.user!.id,z.uuid().parse(req.params.id)]);
+  if (!watch) throw AppError.notFound('Saved scheme not found for this account.');
+  successResponse(res,watch);
 });
 router.put('/watches/:id',async(req,res)=>{
   const id=z.uuid().parse(req.params.id);

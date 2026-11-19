@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowUpRight } from 'lucide-react';
+import { useAuth } from '../hooks/useAuth';
 import { api } from '../services/api';
 import { errorMessage } from '../services/workflow';
 
@@ -28,12 +29,13 @@ function ReviewNotice({ notice, onReview, onAttachment, busy }: {
   notice:Notice; onReview:(id:string, body:unknown)=>void; onAttachment:(id:string)=>void; busy:boolean;
 }) {
   const draft = notice.draft;
+  const [reason,setReason]=useState('');
   const [level,setLevel]=useState(draft.level);
   function publish(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const fields=Object.fromEntries(new FormData(event.currentTarget));
     onReview(notice.id,{
-      action:'publish',
+      action:'publish',reason,
       draft:{ ...fields, deadline:fields.deadline || null, sourceUrl:fields.sourceUrl || null, applyUrl:fields.applyUrl || null },
     });
   }
@@ -48,7 +50,7 @@ function ReviewNotice({ notice, onReview, onAttachment, busy }: {
       {notice.has_attachment ? <button type="button" className="secondary-action" disabled={busy} onClick={()=>onAttachment(notice.id)}>Download original notice</button> : null}
       {draft.sourceUrl ? <a className="secondary-action" href={draft.sourceUrl} target="_blank" rel="noreferrer">Open source <ArrowUpRight size={15}/></a> : null}
     </div>
-    <form onSubmit={publish}>
+    <form onSubmit={publish}><label className="grid gap-2">Review reason<textarea required minLength={5} maxLength={1000} value={reason} onChange={event=>setReason(event.target.value)}/></label>
       <div className="input-grid">
         <label>Scheme name<input name="title" defaultValue={draft.title} required maxLength={255}/></label>
         <label>Issuing authority<input name="issuer" defaultValue={draft.issuer} required maxLength={255}/></label>
@@ -67,19 +69,19 @@ function ReviewNotice({ notice, onReview, onAttachment, busy }: {
       <label className="approval-check"><input type="checkbox" required/>I verified the issuing authority and the details shown above.</label>
       <div className="inline-actions">
         <button className="primary-action" disabled={busy}>Publish scheme</button>
-        <button className="text-action" type="button" disabled={busy} onClick={()=>onReview(notice.id,{action:'reject'})}>Reject notice</button>
+        <button className="text-action" type="button" disabled={busy || reason.trim().length<5} onClick={()=>onReview(notice.id,{action:'reject',reason})}>Reject notice</button>
       </div>
     </form>
   </article>;
 }
 
 export const SchemeMonitorPage = () => {
+  const {user}=useAuth();
   const [sources,setSources]=useState<Source[]>([]);
   const [sourceError,setSourceError]=useState('');
   const [noticeStatus,setNoticeStatus]=useState('');
   const [noticeError,setNoticeError]=useState('');
   const [submitting,setSubmitting]=useState(false);
-  const [key,setKey]=useState('');
   const [queue,setQueue]=useState<Notice[]>();
   const [reviewStatus,setReviewStatus]=useState('');
   const [reviewError,setReviewError]=useState('');
@@ -116,7 +118,7 @@ export const SchemeMonitorPage = () => {
     finally { setSubmitting(false); }
   }
 
-  const reviewConfig={ headers:{ 'x-scheme-monitor-key':key } };
+  const reviewConfig={};
   async function refreshQueue() {
     const { data }=await api.get<{data:Notice[]}>(endpoint+'/review',reviewConfig);
     setQueue(data.data);
@@ -177,12 +179,11 @@ export const SchemeMonitorPage = () => {
       {noticeStatus ? <p role="status">{noticeStatus}</p> : null}
       {noticeError ? <p className="workflow-error" role="alert">{noticeError}</p> : null}
     </section>
-    <section className="workflow-card">
+    {user?.is_admin && <section className="workflow-card">
       <h2>Reviewer workspace</h2>
       <form onSubmit={event=>{event.preventDefault();void reviewOperation(refreshQueue);}}>
-        <div className="input-grid"><label>Monitor review key<input type="password" value={key} onChange={event=>{setKey(event.target.value);setQueue(undefined);}} required autoComplete="off" disabled={reviewBusy}/></label></div>
         <div className="inline-actions mt-3">
-          <button className="secondary-action" disabled={!key || reviewBusy}>{queue ? 'Refresh queue' : 'Open review queue'}</button>
+          <button className="secondary-action" disabled={reviewBusy}>{queue ? 'Refresh queue' : 'Open review queue'}</button>
           {queue ? <button type="button" className="secondary-action" disabled={reviewBusy} onClick={()=>void reviewOperation(async ()=>{
             await api.post(endpoint+'/review/run',{},reviewConfig);
             setReviewStatus('Source checks scheduled. Refresh the review queue after they finish.');
@@ -193,6 +194,6 @@ export const SchemeMonitorPage = () => {
       {reviewStatus ? <p role="status">{reviewStatus}</p> : null}
       {queue ? queue.length ? queue.map(notice=><ReviewNotice key={notice.id} notice={notice} busy={reviewBusy}
         onReview={(id,action)=>void resolve(id,action)} onAttachment={id=>void attachment(id)}/>) : <p>No notices awaiting review.</p> : null}
-    </section>
+    </section>}
   </div>;
 };

@@ -28,6 +28,7 @@ api.interceptors.response.use(
       if (
         window.location.pathname !== '/login' &&
         window.location.pathname !== '/register' &&
+        !['/verify-email','/check-email','/forgot-password','/reset-password','/accept-invitation'].includes(window.location.pathname) &&
         window.location.pathname !== '/'
       ) {
         window.location.href = '/login';

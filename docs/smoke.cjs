@@ -23,11 +23,22 @@ async function main() {
    await page.getByRole('textbox',{name:'Your question',exact:true}).fill('Find scholarships for a third-year mechanical engineering student in Andhra Pradesh.');
    await page.getByRole('button',{name:'Ask JANASEVA AI',exact:true}).click();
    await page.getByRole('link',{name:'Official source',exact:true}).first().waitFor({timeout:60000});
+   if (!process.env.JANASEVA_TEST_EMAIL || !process.env.JANASEVA_TEST_PASSWORD) {
    await page.goto(base+'/register');
    await page.locator('[name=name]').fill('Finder Test Citizen');
    await page.locator('[name=email]').fill('finder-'+Date.now()+'@example.test');
    await page.locator('[name=password]').fill('FinderTestPassword123!');
    await page.locator('[name=confirmPassword]').fill('FinderTestPassword123!');
+   await page.locator('button[type=submit]').click();
+   await page.getByRole('heading',{name:'Check your email',exact:true}).waitFor();
+   assert.equal(await page.getByRole('button',{name:'Resend verification email',exact:true}).isDisabled(),true);
+   assert.deepEqual(errors,[]);
+   console.log('Public finder and pending registration passed. Run npm run test:auth-ui for isolated verified-account and reset checks.');
+   return;
+   }
+   await page.goto(base+'/login');
+   await page.locator('[name=email]').fill(process.env.JANASEVA_TEST_EMAIL);
+   await page.locator('[name=password]').fill(process.env.JANASEVA_TEST_PASSWORD);
    await page.locator('button[type=submit]').click();
    await page.getByRole('heading',{name:'Saved schemes',exact:true}).waitFor();
    await page.route('**/citizen-schemes',async route=>{

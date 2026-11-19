@@ -51,7 +51,11 @@ test('authenticated scholarship journey with real OCR, Playwright and two approv
     const manualSchemeId = '4bc88c80-c67d-4704-971d-9703b7cc3bc0';
     await db.query(`insert into public.schemes(id,scheme_name,description,department,official_url)
       values($1,'Test catalog record','Local test','Test','https://example.test')`,[manualSchemeId]);
-    const register = (name:string,email:string) => request('POST','/auth/register',{name,email,password:'ExamplePassword123!',preferred_language:'en'},undefined,201);
+    const register = async (name:string,email:string) => {
+      await request('POST','/auth/register',{name,email,password:'ExamplePassword123!',preferred_language:'en'},undefined,201);
+      await db.query('update public.users set email_verified_at=now(),registration_pending=false where email=$1',[email]);
+      return request('POST','/auth/login',{email,password:'ExamplePassword123!'});
+    };
     const {token}=await register('Asha Student','asha@example.test');
     await request('POST','/applications',{scheme_id:external.id},token,400);
     const other=(await register('Ravi Student','ravi@example.test')).token;

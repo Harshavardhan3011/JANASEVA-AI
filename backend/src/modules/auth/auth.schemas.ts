@@ -5,7 +5,7 @@ export const registerSchema = z.object({
   email: z.string().trim().max(250).email('Invalid email address'),
   password: z.string().min(8).max(72).refine(value => Buffer.byteLength(value,'utf8') <= 72,'Password is too long'),
   preferred_language: z.enum(['en', 'te']).optional().default('en'),
-});
+}).strict();
 
 export const loginSchema = z.object({
   email: z.string().trim().max(250).email('Invalid email address'),
