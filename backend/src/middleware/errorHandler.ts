@@ -12,12 +12,14 @@ export function errorHandler(
   const requestId = req.requestId || 'unknown';
 
   if (err instanceof AppError) {
+    if (err.retryAfterSeconds) res.set('Retry-After',String(err.retryAfterSeconds));
     console.error(`[${requestId}] AppError: ${err.code} - ${err.message}`);
     res.status(err.statusCode).json({
       success: false,
       error: {
         code: err.code,
         message: err.message,
+        ...(err.retryAfterSeconds?{retryAfterSeconds:err.retryAfterSeconds}:{}),
       },
     });
     return;

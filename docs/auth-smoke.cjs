@@ -9,7 +9,7 @@ const {chromium} = require('../backend/node_modules/playwright');
 async function main() {
   const directory = await mkdtemp(join(tmpdir(), 'janaseva-auth-ui-'));
   const frontend = 'http://127.0.0.1:5175';
-  Object.assign(process.env, {NODE_ENV:'test', DATA_DIR:directory, DATABASE_URL:'', SUPABASE_URL:'',
+  Object.assign(process.env, {BREVO_API_KEY:'',NODE_ENV:'test', DATA_DIR:directory, DATABASE_URL:'', SUPABASE_URL:'',
     SUPABASE_SERVICE_ROLE_KEY:'', FRONTEND_URL:frontend, SMTP_HOST:'smtp.fixture.test',
     SMTP_FROM:'sender@example.test', APP_PUBLIC_URL:frontend, Adminmail:'', AdminPass:'', LLM_API_KEY:''});
   const outbox = [];
@@ -33,6 +33,7 @@ async function main() {
     }
     browser = await chromium.launch(browserOptions());
     const page = await browser.newPage({viewport:{width:1280,height:900}});
+    await page.clock.install();
     const errors=[];
     page.on('pageerror',error => errors.push(error.message));
     await page.goto(frontend);
@@ -168,6 +169,18 @@ async function main() {
     await page.getByRole('link',{name:'Log in to save',exact:true}).first().click();
     await login('ChangedBrowserPassword123!');
     await page.getByRole('button',{name:'Following updates',exact:true}).waitFor();
+    await page.route('**/auth/resend-verification',route=>route.fulfill({status:429,contentType:'application/json',body:JSON.stringify({success:false,error:{code:'RATE_LIMITED',retryAfterSeconds:120}})}));
+    const [restored]=await Promise.all([page.waitForResponse(response=>response.url()===api+'/auth/me'),page.goto(frontend+'/check-email?email='+encodeURIComponent(email))]);
+    await restored.finished();
+    await page.getByRole('heading',{name:'Check your email',exact:true}).waitFor();
+    await page.waitForTimeout(200);
+    await page.clock.fastForward(61000);
+    await page.getByRole('button',{name:'Resend verification email',exact:true}).click();
+    await page.getByRole('alert').filter({hasText:'Too many email requests'}).waitFor();
+    assert.equal(await page.getByRole('button',{name:'Resend verification email',exact:true}).isDisabled(),true);
+    await page.reload();
+    assert.equal(await page.getByRole('button',{name:'Resend verification email',exact:true}).isDisabled(),true);
+    assert.ok(Number((await page.getByRole('status').innerText()).match(/\d+/)[0])>100,'Server retry deadline survives refresh.');
     assert.deepEqual(errors,[]);
     console.log('PASS: desktop/mobile account navigation, pending gate, explicit verification, dashboard, save, reset, preserved saved schemes. Emails captured locally; production delivery unverified.');
   } finally {

@@ -2,6 +2,24 @@
 
 JANASEVA uses its existing Express, bcrypt and server-session authentication. Supabase stores the application's tables; this is not Supabase Auth. Configure SMTP on the **Render API service**, not in Supabase Auth or Vercel.
 
+## Brevo HTTPS option when SMTP authentication fails
+
+Set the server-only `BREVO_API_KEY` on the Render API service to use Brevo's HTTPS transactional email API. When this key is present, verification, reset and invitation emails use HTTPS automatically; the app does not fall back to SMTP on API failure. Leave the key absent to keep using SMTP. The existing verified `SMTP_FROM` sender and `APP_PUBLIC_URL` are reused.
+
+1. In Brevo, open **Settings → SMTP & API → API Keys & MCP → Generate API key**. This is an API key, separate from the SMTP key. A restricted key needs **Transactional email: All** for sending and **Account: Read** for the startup connection check. Do not enable the MCP-only key option.
+2. Save the actual API key value as `BREVO_API_KEY` in Render's environment settings. Never put it in Vercel, browser code, Git or chat.
+3. Set `TRUST_PROXY_HOPS=1` on Render if overriding this setting. With no override, the app detects Render and defaults to one trusted reverse-proxy hop, keeping each client's IP rate-limit bucket separate.
+4. Choose **Save and deploy** after deploying the latest code. The backend startup check should show `BREVO_API_READY`. This checks authentication and local sender format; it does not prove the sender is authorized or an email arrived. A provider rejection during sending is logged only as an allowlisted code and HTTP status.
+5. Wait for any existing resend rate limit to expire, resend once, and confirm the actual inbox arrival. SMTP settings may stay configured; they are unused while `BREVO_API_KEY` is present.
+
+The API uses the fixed `https://api.brevo.com/v3/smtp/email` endpoint with the `api-key` header. Redirects are rejected and requests time out after 15 seconds. API errors preserve pending accounts and published account data. Password-recovery responses remain identical for eligible and unknown accounts.
+
+References: [Brevo transactional API](https://developers.brevo.com/reference/send-transac-email), [API key creation](https://help.brevo.com/hc/en-us/articles/209467485-Create-and-manage-your-API-keys), [key permissions](https://help.brevo.com/hc/en-us/articles/40158285046930-About-API-key-permissions).
+
+## Resend throttling
+
+Both IP and email limits remain enforced. A blocked email request returns JSON with `retryAfterSeconds` plus a `Retry-After` header. The verification/recovery page displays this countdown, disables resend until expiry and retains the deadline across browser refreshes. Email limits persist in the database, so a deployment does not clear an email's existing limit. These controls do not fix provider authentication failures; configure and verify delivery before requesting more emails.
+
 ## Set up SMTP before deploying the authentication change
 
 1. Create a [Brevo](https://www.brevo.com/) account and activate transactional email. Its documented free allowance is 300 sends/day; provider limits and approval still apply.

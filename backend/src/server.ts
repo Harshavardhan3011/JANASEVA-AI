@@ -15,8 +15,8 @@ if (env.NODE_ENV === 'production' && new URL(env.MOCK_PORTAL_URL).hostname === '
 
 const server = app.listen(env.PORT, env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1', () => {
   console.log(`JANASEVA AI API listening on port ${env.PORT}`);
-  if (env.NODE_ENV==='production') void checkAuthMail().then(status=>console.info('Auth SMTP check',status))
-    .catch(()=>console.warn('Auth SMTP check unavailable'));
+  if (env.NODE_ENV==='production') void checkAuthMail().then(status=>console.info('Auth email check',status))
+    .catch(()=>console.warn('Auth email check unavailable'));
 });
 const stopMonitor=scheduleMonitor();
 const stopCatalog=scheduleCatalog();

@@ -8,6 +8,7 @@ import type { AddressInfo } from 'node:net';
 test('scheme monitor publishes official changes, queues announcements and reviews an OCR village notice', { timeout:60000 }, async () => {
   const directory=await mkdtemp(join(tmpdir(),'janaseva-monitor-'));
   process.env.NODE_ENV='test';
+  process.env.BREVO_API_KEY='';
   process.env.DATA_DIR=directory;
   process.env.DATABASE_URL='';
   process.env.SUPABASE_URL='';

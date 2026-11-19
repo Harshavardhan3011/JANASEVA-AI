@@ -7,7 +7,7 @@ import type { AddressInfo } from 'node:net';
 
 test('email verification, recovery, admin invitations and account preservation',{timeout:120000},async()=>{
  const directory=await mkdtemp(join(tmpdir(),'janaseva-auth-'));
- Object.assign(process.env,{NODE_ENV:'test',DATA_DIR:directory,DATABASE_URL:'',SUPABASE_URL:'',SUPABASE_SERVICE_ROLE_KEY:'',
+ Object.assign(process.env,{BREVO_API_KEY:'',NODE_ENV:'test',DATA_DIR:directory,DATABASE_URL:'',SUPABASE_URL:'',SUPABASE_SERVICE_ROLE_KEY:'',
    SMTP_HOST:'smtp.fixture.test',SMTP_FROM:'JANASEVA AI <sender@example.test>',APP_PUBLIC_URL:'https://janaseva.example.test',
    LLM_API_KEY:'',Adminmail:'',AdminPass:''});
  const mailer=require('nodemailer');
@@ -31,8 +31,9 @@ test('email verification, recovery, admin invitations and account preservation',
  async function request(path:string,body?:unknown,status=200,token?:string,method='POST') {
    const response=await fetch(base+path,{method,headers:{'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{})},
      body:body===undefined?undefined:JSON.stringify(body)});
-   const result=await response.json() as {data:any;error?:{code:string}};
+   const result=await response.json() as {data:any;error?:{code:string;retryAfterSeconds?:number}};
    assert.equal(response.status,status,path+' returned '+response.status);
+   if (status===429) {assert.ok(result.error?.retryAfterSeconds && result.error.retryAfterSeconds>0);assert.equal(Number(response.headers.get('Retry-After')),result.error.retryAfterSeconds);}
    return result;
  }
  function deliveredToken() {
@@ -128,6 +129,20 @@ test('email verification, recovery, admin invitations and account preservation',
    await ageTokens();
    for (let count=0;count<5;count++) await request('/auth/forgot-password',{email:'rate@example.test'});
    await request('/auth/forgot-password',{email:'rate@example.test'},429);
+   app.set('trust proxy',1);
+   for (let attempt=0;attempt<21;attempt++) {
+     const response=await fetch(base+'/auth/forgot-password',{method:'POST',headers:{'Content-Type':'application/json','X-Forwarded-For':'203.0.113.7'},
+       body:JSON.stringify({email:'ip-limit-'+attempt+'@example.test'})});
+     assert.equal(response.status,attempt<20?200:429);
+     if (attempt===20) {
+       const limited=await response.json() as {error:{retryAfterSeconds:number}};
+       assert.ok(limited.error.retryAfterSeconds>0);
+       assert.equal(Number(response.headers.get('Retry-After')),limited.error.retryAfterSeconds);
+     }
+   }
+   const otherIp=await fetch(base+'/auth/forgot-password',{method:'POST',headers:{'Content-Type':'application/json','X-Forwarded-For':'203.0.113.8'},
+     body:JSON.stringify({email:'another-ip@example.test'})});
+   assert.equal(otherIp.status,200,'Trusted proxy clients do not share one IP throttle bucket.');
    assert.ok(env.AUTH_EMAIL_COOLDOWN_SECONDS>=30);
  } finally {
    mailer.createTransport=original;

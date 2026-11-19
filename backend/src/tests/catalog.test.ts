@@ -21,6 +21,7 @@ test('background import, validated publication, AP review, deduplication and fai
   const directory=await mkdtemp(join(tmpdir(),'janaseva-catalog-'));
   const pdf=process.env.CATALOG_TEST_PDF ? await readFile(process.env.CATALOG_TEST_PDF) : null;
   process.env.NODE_ENV='development';
+  process.env.BREVO_API_KEY='';
   process.env.DATA_DIR=directory;
   process.env.DATABASE_URL='';
   process.env.SUPABASE_URL='';

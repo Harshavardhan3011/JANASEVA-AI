@@ -18,6 +18,7 @@ const close = async (server:Server) => new Promise<void>(resolve=>{ server.close
 test('authenticated scholarship journey with real OCR, Playwright and two approvals', { timeout:150000 }, async () => {
   const directory=await mkdtemp(join(tmpdir(),'janaseva-test-'));
   await mkdir(directory,{recursive:true});
+  process.env.BREVO_API_KEY='';
   process.env.DATA_DIR=directory;
   process.env.DATABASE_URL='';
   process.env.LLM_API_KEY='';

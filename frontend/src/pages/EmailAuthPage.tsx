@@ -13,7 +13,11 @@ export function EmailAuthPage() {
  const [email,setEmail]=useState(params.get('email') || '');
  const [password,setPassword]=useState('');
  const [confirmation,setConfirmation]=useState('');
- const [cooldown,setCooldown]=useState<number>(mode==='/check-email'?(location.state?.cooldown ?? 60):0);
+ const retryKey='janaseva_email_retry:'+mode+':'+email.trim().toLowerCase();
+ const [cooldown,setCooldown]=useState<number>(()=>{
+   let retryAt=0;try {retryAt=Number(sessionStorage.getItem(retryKey)) || 0;} catch { /* Countdown still works without browser storage. */ }
+   return Math.max(0,Math.ceil((retryAt-Date.now())/1000),mode==='/check-email'?(location.state?.cooldown ?? 60):0);
+ });
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
  const [done,setDone]=useState(false);
@@ -25,7 +29,8 @@ export function EmailAuthPage() {
  },[location.hash,location.pathname,mode,params,destination]);
  useEffect(()=>{
    if (!cooldown) return;
-   const timer=window.setInterval(()=>setCooldown(value=>Math.max(0,value-1)),1000);
+   const expiresAt=Date.now()+cooldown*1000;
+   const timer=window.setInterval(()=>setCooldown(Math.max(0,Math.ceil((expiresAt-Date.now())/1000))),1000);
    return ()=>clearInterval(timer);
  },[cooldown]);
  const confirm=mode==='/verify-email' || mode==='/reset-password' || mode==='/accept-invitation';
@@ -47,7 +52,16 @@ export function EmailAuthPage() {
        const {data}=await api.post('/auth/'+path,{email});
        setCooldown(data.data.cooldown || 60);setMessage(data.data.message);
      }
-   } catch(err) {setError(err instanceof Error && !('response' in err)?err.message:errorMessage(err));}
+   } catch(err) {
+     const response=(err as {response?:{status?:number;data?:{error?:{retryAfterSeconds?:number}}}})?.response;
+     if (response?.status===429) {
+       const seconds=Number(response.data?.error?.retryAfterSeconds || 3600);
+       const wait=Number.isFinite(seconds)?Math.max(1,Math.ceil(seconds)):3600;
+       setCooldown(wait);
+       try {sessionStorage.setItem(retryKey,String(Date.now()+wait*1000));} catch { /* Optional browser storage. */ }
+       setError('Too many email requests. Please wait for the countdown before retrying.');
+     } else setError(err instanceof Error && !('response' in err)?err.message:errorMessage(err));
+   }
    finally {setBusy(false);}
  }
  return <div className="space-y-4">

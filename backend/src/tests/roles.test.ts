@@ -7,7 +7,7 @@ import type { AddressInfo } from 'node:net';
 
 test('verified account isolation, admin endpoints, durable discovery and audited revisions',{timeout:120000},async()=>{
   const directory=await mkdtemp(join(tmpdir(),'janaseva-roles-'));
-  Object.assign(process.env,{NODE_ENV:'test',DATA_DIR:directory,DATABASE_URL:'',SUPABASE_URL:'',SUPABASE_SERVICE_ROLE_KEY:'',
+  Object.assign(process.env,{BREVO_API_KEY:'',NODE_ENV:'test',DATA_DIR:directory,DATABASE_URL:'',SUPABASE_URL:'',SUPABASE_SERVICE_ROLE_KEY:'',
     SMTP_HOST:'smtp.fixture.test',SMTP_FROM:'sender@example.test',APP_PUBLIC_URL:'https://janaseva.example.test',
     LLM_PROVIDER:'openai',LLM_API_KEY:'fixture-only',TAVILY_API_KEY:'',SCHEME_SEARCH_API_KEY:'',
     Adminmail:'admin@example.test',AdminPass:'AdminFixturePassword123!'});

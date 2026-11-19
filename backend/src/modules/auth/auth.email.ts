@@ -8,10 +8,11 @@ export const normalizeEmail=(email:string)=>email.trim().toLowerCase();
 export const tokenHash=(token:string)=>createHash('sha256').update(token).digest('hex');
 export async function emailLimit(email:string,kind:string) {
  const key=tokenHash(kind+':'+normalizeEmail(email));
- const {rows:[limit]}=await (await database()).query<{attempts:number}>(`insert into public.auth_email_limits(key) values($1)
+ const {rows:[limit]}=await (await database()).query<{attempts:number;retry_after_seconds:number}>(`insert into public.auth_email_limits(key) values($1)
  on conflict(key) do update set attempts=case when auth_email_limits.window_start<now()-interval '1 hour' then 1 else auth_email_limits.attempts+1 end,
- window_start=case when auth_email_limits.window_start<now()-interval '1 hour' then now() else auth_email_limits.window_start end returning attempts`,[key]);
- if (limit.attempts>5) throw new AppError('Too many requests. Try again later.',429,'RATE_LIMITED');
+ window_start=case when auth_email_limits.window_start<now()-interval '1 hour' then now() else auth_email_limits.window_start end
+ returning attempts,greatest(1,ceil(extract(epoch from(window_start+interval '1 hour'-now()))))::int as retry_after_seconds`,[key]);
+ if (limit.attempts>5) throw new AppError('Too many email requests. Wait for the countdown before trying again.',429,'RATE_LIMITED',true,limit.retry_after_seconds);
 }
 export async function issueEmail(user:{id:string;email:string},purpose:'verify'|'reset'|'invite',issuedBy:string|null=null) {
  const token=randomBytes(32).toString('base64url');

@@ -7,7 +7,7 @@
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
-    "test": "npm run build && node --test dist/tests/eligibility.test.js dist/tests/workflow.test.js dist/tests/browser.test.js dist/tests/monitor.test.js dist/tests/catalog.test.js dist/tests/auth.test.js dist/tests/roles.test.js",
+    "test": "npm run build && node --test dist/tests/eligibility.test.js dist/tests/workflow.test.js dist/tests/browser.test.js dist/tests/monitor.test.js dist/tests/catalog.test.js dist/tests/auth.test.js dist/tests/roles.test.js dist/tests/mail.test.js",
     "policy:index": "tsx src/policy-index.ts",
     "monitor:key": "tsx src/print-monitor-key.ts",
     "schemes:sync": "tsx src/run-scheme-sync.ts"
