@@ -2,7 +2,7 @@ import { createHash,randomBytes } from 'node:crypto';
 import { database,Database } from '../../config/db';
 import { env } from '../../config/env';
 import { AppError } from '../../shared/errors';
-import { sendAuthMail } from './auth.mail';
+import { sendAuthMail, safeMailFailure } from './auth.mail';
 
 export const normalizeEmail=(email:string)=>email.trim().toLowerCase();
 export const tokenHash=(token:string)=>createHash('sha256').update(token).digest('hex');
@@ -28,8 +28,9 @@ export async function issueEmail(user:{id:string;email:string},purpose:'verify'|
  });
  if (!issued) return {sent:false,cooldown:env.AUTH_EMAIL_COOLDOWN_SECONDS};
  try {await sendAuthMail(user.email,purpose,token);return {sent:true,cooldown:env.AUTH_EMAIL_COOLDOWN_SECONDS};}
- catch {
-   // Never log transport exceptions, which may contain addresses, credentials or mail content.
+ catch(error) {
+   // Only allowlisted codes, never addresses, credentials, message bodies or raw SMTP responses.
+   console.warn('Auth email delivery failed',safeMailFailure(error));
    return {sent:false,cooldown:env.AUTH_EMAIL_COOLDOWN_SECONDS};
  }
 }

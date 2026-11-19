@@ -4,6 +4,7 @@ import { env,root } from './config/env';
 import { scheduleMonitor } from './modules/monitor/monitor.job';
 import { scheduleCatalog } from './modules/catalog/catalog.job';
 import { join } from 'node:path';
+import { checkAuthMail } from './modules/auth/auth.mail';
 
 if (env.SCHEME_SYNC_WORKER) throw new Error('Use the scheduled sync command in worker mode.');
 
@@ -14,6 +15,8 @@ if (env.NODE_ENV === 'production' && new URL(env.MOCK_PORTAL_URL).hostname === '
 
 const server = app.listen(env.PORT, env.NODE_ENV === 'production' ? '0.0.0.0' : '127.0.0.1', () => {
   console.log(`JANASEVA AI API listening on port ${env.PORT}`);
+  if (env.NODE_ENV==='production') void checkAuthMail().then(status=>console.info('Auth SMTP check',status))
+    .catch(()=>console.warn('Auth SMTP check unavailable'));
 });
 const stopMonitor=scheduleMonitor();
 const stopCatalog=scheduleCatalog();

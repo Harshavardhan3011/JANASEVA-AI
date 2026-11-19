@@ -14,7 +14,7 @@ test('email verification, recovery, admin invitations and account preservation',
  const original=mailer.createTransport;
  const outbox:Array<{to:string;text:string}>=[];
  let failMail=false;
- mailer.createTransport=()=>({sendMail:async(mail:{to:string;text:string})=>{
+ mailer.createTransport=()=>({verify:async()=>{if (failMail) throw Object.assign(new Error('Never expose SMTP credentials or responses'),{code:'EAUTH',responseCode:535});return true;},close:()=>{},sendMail:async(mail:{to:string;text:string})=>{
    if (failMail) throw new Error('Controlled delivery failure');
    outbox.push(mail);return {accepted:[mail.to]};
  }});
@@ -44,6 +44,14 @@ test('email verification, recovery, admin invitations and account preservation',
    await db.query('delete from public.auth_email_limits');
  }
  try {
+   const {safeMailFailure,checkAuthMail}=await import('../modules/auth/auth.mail');
+   assert.deepEqual(safeMailFailure({code:'EAUTH',responseCode:535,message:'secret credential',response:'private SMTP reply'}),{code:'EAUTH',responseCode:535});
+   assert.deepEqual(safeMailFailure({code:'secret credential',responseCode:'private reply'}),{code:'SMTP_FAILURE',responseCode:undefined});
+   const oldHost=env.SMTP_HOST;env.SMTP_HOST='';
+   assert.equal((await checkAuthMail()).code,'SMTP_NOT_CONFIGURED');env.SMTP_HOST=oldHost;
+   env.SMTP_USER='fixture-login';env.SMTP_PASS='fixture-password';
+   assert.equal((await checkAuthMail()).ready,true);
+   failMail=true;assert.equal((await checkAuthMail()).code,'EAUTH');failMail=false;
    await request('/auth/register',{...payload,role:'admin'},400);
    const pending=await request('/auth/register',payload,201);
    assert.equal(pending.data.verification_required,true);assert.equal(pending.data.token,undefined);
