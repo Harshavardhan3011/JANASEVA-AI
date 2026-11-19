@@ -181,6 +181,20 @@ async function main() {
     await page.reload();
     assert.equal(await page.getByRole('button',{name:'Resend verification email',exact:true}).isDisabled(),true);
     assert.ok(Number((await page.getByRole('status').innerText()).match(/\d+/)[0])>100,'Server retry deadline survives refresh.');
+    const {env}=require('../backend/dist/config/env');
+    env.Adminmail='default-admin@example.invalid';env.AdminPass='BootstrapFixturePassword123!';
+    const mailCount=outbox.length;
+    await page.goto(frontend+'/');
+    await page.getByText('My account',{exact:true}).click();
+    await page.getByRole('button',{name:'Log out',exact:true}).click();
+    await page.goto(frontend+'/login');
+    await login(env.AdminPass,env.Adminmail);
+    await page.waitForURL('**/admin');
+    await page.getByRole('heading',{name:'Administration',exact:true}).waitFor();
+    await page.reload();
+    await page.getByRole('heading',{name:'Administration',exact:true}).waitFor();
+    assert.equal(outbox.length,mailCount,'Server-configured admin signs in and restores the session without email.');
+    assert.equal((await (await database()).query('select email_verified_at from public.users where email=$1',[env.Adminmail])).rows[0].email_verified_at,null);
     assert.deepEqual(errors,[]);
     console.log('PASS: desktop/mobile account navigation, pending gate, explicit verification, dashboard, save, reset, preserved saved schemes. Emails captured locally; production delivery unverified.');
   } finally {

@@ -92,7 +92,7 @@ export function AdminDiscovery() {
     <section className="workflow-card"><h2>Source runs</h2>{data && !data.runs.length && <p>Source results will appear after the first check.</p>}{data?.runs.map(run=><article key={run.id} className="border-b py-3"><strong>{run.source_id} · {run.trigger_kind}</strong><p>{date(run.started_at)} · {run.finished_at?'Finished':'Running'}</p><p>{run.added} added · {run.changed} updated · {run.skipped} skipped · {run.failed} failed · {run.published} published</p>{run.error && <p>{run.error}</p>}<details><summary>Source outcomes</summary>{run.outcomes.map((item,index)=><p key={index} className="break-all"><a className="underline" href={item.url}>{item.url}</a> · {item.result}{item.error && ' · '+item.error}</p>)}</details></article>)}</section>
   </div>;
 }
-interface Account {id:string;name:string;email:string;email_verified_at:string|null;registration_pending:boolean;role:string;created_at:string}
+interface Account {id:string;name:string;email:string;email_verified_at:string|null;registration_pending:boolean;role:string;admin_source:string|null;created_at:string}
 export function AdminUsers() {
   const [params,setParams]=useSearchParams();
   const {data,error}=useAdminData<{items:Account[];total:number;page:number}>('users?'+params.toString());
@@ -103,7 +103,7 @@ export function AdminUsers() {
     <section className="workflow-card"><h2>Invite an administrator</h2><p>Access is granted only after the invited address confirms its single-use email link.</p>
       <form className="inline-actions" onSubmit={async event=>{event.preventDefault();const email=String(new FormData(event.currentTarget).get('email'));setBusy(true);try {setMessage((await api.post('/auth/admin-invitations',{email})).data.data.message);}catch(err){setInviteError(errorMessage(err));}finally{setBusy(false);}}}><label>Administrator email<input type="email" name="email" required/></label><button className="secondary-action" disabled={busy}>Send invitation</button></form>
     </section>
-    {data && <><p>{data.total} accounts · Pending accounts are excluded from the overview's verified count.</p>{!data.items.length && <p>No accounts match your search.</p>}{data.items.map(account=><article className="workflow-card" key={account.id}><h2>{account.name}</h2><p>{account.email}</p><p>{account.email_verified_at?'Verified':'Pending verification'} · {account.role} · Created {date(account.created_at)}</p></article>)}
+    {data && <><p>{data.total} accounts · Pending accounts are excluded from the overview's verified count.</p>{!data.items.length && <p>No accounts match your search.</p>}{data.items.map(account=><article className="workflow-card" key={account.id}><h2>{account.name}</h2><p>{account.email}</p><p>{account.email_verified_at?'Verified':account.admin_source==='bootstrap'?'Server-provisioned admin (email verification not required)':'Pending verification'} · {account.role} · Created {date(account.created_at)}</p></article>)}
       <div className="inline-actions"><button disabled={data.page<=1} onClick={()=>{params.set('page',String(data.page-1));setParams(params);}}>Previous</button><span>Page {data.page}</span><button disabled={data.page*40>=data.total} onClick={()=>{params.set('page',String(data.page+1));setParams(params);}}>Next</button></div>
     </>}
   </div>;

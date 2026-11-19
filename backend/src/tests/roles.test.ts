@@ -74,12 +74,16 @@ test('verified account isolation, admin endpoints, durable discovery and audited
     assert.deepEqual(await request('/citizen-schemes/progress/'+catalog[0].id,a.token),{'Prepare document':true});
     for (const path of ['/admin/overview','/admin/schemes','/admin/review','/admin/discovery','/admin/users','/admin/audit','/scheme-catalog-admin']) await request(path,b.token,'GET',undefined,403);
     await request('/admin/discovery/sync',b.token,'POST',{},403);
-    await request('/auth/login',undefined,'POST',{email:process.env.Adminmail,password:process.env.AdminPass});
-    await verify(process.env.Adminmail!);
     const admin=await request('/auth/login',undefined,'POST',{email:process.env.Adminmail,password:process.env.AdminPass});
+    assert.equal(admin.user.is_admin,true);assert.equal(admin.user.email_verified_at,null);
+    assert.equal(admin.verification_required,undefined);
+    assert.equal(outbox.filter(mail=>mail.to===process.env.Adminmail).length,0,'Default admin does not require an inbox.');
+    await request('/auth/resend-verification',undefined,'POST',{email:process.env.Adminmail});
+    assert.equal(outbox.filter(mail=>mail.to===process.env.Adminmail).length,0);
+    const restored=await request('/auth/me',admin.token);assert.equal(restored.user.is_admin,true);
     const users=await request('/admin/users',admin.token);assert.equal(users.items.length,3);
     assert.ok(users.items.every((user:any)=>!('password_hash' in user)));
-    assert.equal((await request('/admin/overview',admin.token)).verified_users,3);
+    assert.equal((await request('/admin/overview',admin.token)).verified_users,2);
     await db.query('update public.scheme_catalog_sources set enabled=false');
     await db.query(`insert into public.scheme_catalog_sources(id,label,url,kind,settings) values('fixture','Controlled integration fixture',$1,'document',$2)`,
       [official,JSON.stringify({title:'Isolated test support scheme',issuer:'Test fixture',category:'Other'})]);

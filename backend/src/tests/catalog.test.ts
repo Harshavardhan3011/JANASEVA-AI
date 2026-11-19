@@ -384,7 +384,7 @@ test('background import, validated publication, AP review, deduplication and fai
     await request('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({email:env.Adminmail,password:'WrongPassword'})},401);
     await request('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:env.Adminmail,password:env.AdminPass})});
-    await db.query('update public.users set email_verified_at=now() where email=$1',[env.Adminmail]);
+    assert.equal((await db.query('select email_verified_at from public.users where email=$1',[env.Adminmail])).rows[0].email_verified_at,null);
     const {data:adminSession}=await request('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},
       body:JSON.stringify({email:env.Adminmail,password:env.AdminPass})});
     assert.equal(adminSession.user.is_admin,true);
@@ -393,7 +393,7 @@ test('background import, validated publication, AP review, deduplication and fai
     const {data:adminMe}=await request('/auth/me',{headers:adminSessionHeaders});
     assert.equal(adminMe.user.is_admin,true);
     env.AdminPass='RotatedAdminPassword123!';
-    await request(admin,{headers:adminSessionHeaders},403);
+    await request(admin,{headers:adminSessionHeaders},401);
 
 
     assert.ok(after.runs.some((run:any)=>run.trigger_kind==='test-updated' && run.changed===1 && run.published===1));

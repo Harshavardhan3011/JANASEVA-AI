@@ -1,6 +1,6 @@
 # Role-based dashboards
 
-The existing Express/TypeScript, React/Vite, bcrypt, JWT plus database session system is retained. The server verifies email and checks current administrator authorization on every private API request. Browser-stored user details are never used to grant access.
+The existing Express/TypeScript, React/Vite, bcrypt, JWT plus database session system is retained. The server verifies regular and invited-admin email and checks current administrator authorization on every private API request. The default administrator configured with `Adminmail` and `AdminPass` is exempt from mailbox verification and must hold a current fingerprinted server-provisioned session. Browser-stored user details are never used to grant access.
 
 ## Final route map
 
@@ -36,7 +36,7 @@ Existing document, guided application and tracking URLs remain protected and ava
 
 ## Routing and account isolation
 
-Protected routes wait for `/auth/me` before rendering. Cached user roles are ignored. Unverified sessions go to verification; intended internal destinations persist until login. Regular users land at `/dashboard`, admins at `/admin`. A regular user cannot select an admin URL through `next`. Unknown, external and authentication-loop return destinations are rejected.
+Protected routes wait for `/auth/me` before rendering. Cached user roles are ignored. Unverified regular sessions go to verification; intended internal destinations persist until login. Regular users land at `/dashboard`, admins at `/admin`. A regular user cannot select an admin URL through `next`. Unknown, external and authentication-loop return destinations are rejected.
 
 The Save action stores an internal scheme destination including `save=1`; after authentication, the detail page performs the idempotent save. Account-specific React state is remounted on account changes, requests are cancelled on unmount, and logout removes session/client account state. APIs derive the owner from the authenticated session. Saves retain the existing `(user_id,scheme_id)` primary key. Profile partial updates merge preferences so saving only a location does not erase education/income. Archived catalog entries remain in personal saved data with an archive notice and remove action.
 
@@ -79,7 +79,7 @@ Production SMTP remains required for the existing verification, reset and admin 
 
 The full backend suite passes all 13 tests; TypeScript, ESLint and production builds also pass. The GitHub scheduler YAML parses successfully.
 
-Local checks exercise two independently registered and API-verified users, separate saves, checklist ownership, forbidden identity overrides, admin authorization, invitation/bootstrap verification, durable request deduplication, concurrent worker claims, source-outage preservation, expired-lease recovery, revision history, rejected changes and audit actors.
+Local checks exercise two independently registered and API-verified users, separate saves, checklist ownership, forbidden identity overrides, admin authorization, invitation verification and default-admin login without a mailbox, durable request deduplication, concurrent worker claims, source-outage preservation, expired-lease recovery, revision history, rejected changes and audit actors.
 
 The browser test exercises verification, ordinary/admin redirects, protected Save return for both roles, two-account switching in one browser, profile editing, direct dashboard subroute refresh, forged cached-admin rejection, password reset, mobile layout widths, direct admin page refreshes and the queued/completed Sync now display.
 

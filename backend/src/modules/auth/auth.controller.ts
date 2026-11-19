@@ -17,8 +17,10 @@ interface User { id: string; email: string; name: string; password_hash?: string
 async function signIn(user: User,admin=false,expectedPassword?:string) {
   const sid=randomUUID();
   await (await database()).transaction(async db=>{
-    const {rows:[current]}=await db.query('select password_hash,email_verified_at from public.users where id=$1 for update',[user.id]);
-    if (!current?.email_verified_at || (expectedPassword && expectedPassword!==current.password_hash)) throw AppError.unauthorized('Sign in again with your current credentials.');
+    const {rows:[current]}=await db.query('select password_hash,email_verified_at,email,role,admin_source from public.users where id=$1 for update',[user.id]);
+    const bootstrap=Boolean(admin && current?.role==='admin' && current.admin_source==='bootstrap' &&
+      adminFingerprint() && normalizeEmail(current.email)===normalizeEmail(env.Adminmail));
+    if ((!current?.email_verified_at && !bootstrap) || (expectedPassword && expectedPassword!==current.password_hash)) throw AppError.unauthorized('Sign in again with your current credentials.');
     await db.query("insert into public.citizen_sessions(id,user_id,expires_at,admin_fingerprint) values ($1,$2,now()+interval '12 hours',$3)",[sid,user.id,admin && user.admin_source!=='invitation'?adminFingerprint():null]);
   });
   return {user:{...user,is_admin:admin},token:jwt.sign({id:user.id,email:user.email,sid},await jwtSecret(),{algorithm:'HS256',expiresIn:'12h'})};
@@ -45,17 +47,14 @@ export async function login(req: Request, res: Response) {
     const {rows:[admin]}=await (await database()).query<User>(`insert into public.users(name,email,password_hash)
       values('Administrator',$1,$2) on conflict(email) do update set email=excluded.email returning ${fields}`,
       [env.Adminmail.toLowerCase(),await bcrypt.hash(randomUUID(),12)]);
-    if (!admin.email_verified_at) {
-      await emailLimit(admin.email,'verify');
-      const delivery=await issueEmail(admin,'verify');
-      successResponse(res,{verification_required:true,email:admin.email,...delivery});return;
-    }
     await (await database()).transaction(async db=>{
-      const {rows:[current]}=await db.query('select role from public.users where id=$1 for update',[admin.id]);
-      if (current.role!=='admin') {
-        await db.query("update public.users set role='admin',admin_source='bootstrap' where id=$1",[admin.id]);
-        await db.query("insert into public.auth_role_audit(user_id,actor_id,old_role,new_role,reason) values($1,$1,$2,'admin','Protected environment bootstrap')",[admin.id,current.role]);
+      const {rows:[current]}=await db.query('select role,admin_source from public.users where id=$1 for update',[admin.id]);
+      if (current.role!=='admin' || current.admin_source!=='bootstrap') {
+        await db.query("update public.users set role='admin',admin_source='bootstrap',registration_pending=false where id=$1",[admin.id]);
+        await db.query("insert into public.auth_role_audit(user_id,actor_id,old_role,new_role,reason) values($1,$1,$2,'admin','Protected environment bootstrap; mailbox verification not required')",[admin.id,current.role]);
       }
+      // Server provisioning authorizes this account without inventing email-verification evidence.
+      await db.query("delete from public.auth_email_tokens where user_id=$1 and purpose='verify'",[admin.id]);
     });
     successResponse(res,await signIn({...admin,role:'admin',admin_source:'bootstrap'},true));return;
   }
@@ -85,7 +84,7 @@ export async function resendVerification(req:Request,res:Response) {
  const {email}=loginSchema.pick({email:true}).parse(req.body);
  await emailLimit(email,'verify');
  const {rows:[user]}=await (await database()).query<User>('select id,email,email_verified_at from public.users where lower(trim(email))=$1',[normalizeEmail(email)]);
- const delivery=user && !user.email_verified_at?await issueEmail(user,'verify'):{sent:false,cooldown:env.AUTH_EMAIL_COOLDOWN_SECONDS};
+ const delivery=user && !user.email_verified_at && !(adminFingerprint() && normalizeEmail(user.email)===normalizeEmail(env.Adminmail))?await issueEmail(user,'verify'):{sent:false,cooldown:env.AUTH_EMAIL_COOLDOWN_SECONDS};
  successResponse(res,{message:'If this account needs verification, an email will be sent.',cooldown:delivery.cooldown});
 }
 export async function confirmVerification(req:Request,res:Response) {
