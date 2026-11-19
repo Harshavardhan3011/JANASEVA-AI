@@ -1,6 +1,6 @@
 import { database } from '../../config/db';
 import { createOfficialReader, readDocument } from './catalog.fetch';
-import { captureDocument, generateVersion } from './catalog.repo';
+import { captureDocument, generateVersion, publishVersion } from './catalog.repo';
 import { metadataSchema } from './catalog.types';
 
 export async function runRechecks() {
@@ -24,6 +24,7 @@ export async function runRechecks() {
      if (captured.kind!=='skipped') {
        const generated=await generateVersion(captured.version.id);
        if (generated.status==='generation_failed') throw new Error(generated.error || 'Generation failed.');
+       if (!await publishVersion(generated.id,null)) throw new Error('Automatic publication needs clearer official evidence; the previous record is retained.');
      }
      await db.query("update public.scheme_recheck_requests set status='completed',checked_at=now(),lease_until=null,error=null where scheme_id=$1",[request.scheme_id]);
    } catch(error) {

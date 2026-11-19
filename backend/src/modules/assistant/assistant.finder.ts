@@ -4,6 +4,7 @@ import { schemes } from '../schemes/schemes.controller';
 import { findSchemes, verifiedDeadline } from '../schemes/scheme.finder';
 import { generateProviderJson } from '../../ai/providers/llm.provider';
 import { database } from '../../config/db';
+import { searchPublishers } from '../catalog/catalog.publishers';
 import { wakeCatalog } from '../catalog/catalog.job';
 import { hasSearchKey } from '../catalog/catalog.search';
 
@@ -28,10 +29,18 @@ export async function answerQuestion(message:string,previousIds:string[]=[]) {
  matches=matches.slice(0,5);
  const stale=matches.some(scheme=>!scheme.last_verified_at || Date.now()-new Date(scheme.last_verified_at).getTime()>7*86400000);
  const db=await database();
- if (!matches.length || stale) {
+ const requestedState=searchPublishers.find(publisher=>publisher.state && message.toLowerCase().includes(publisher.state.toLowerCase()))?.state;
+ const missingState=Boolean(requestedState && !matches.some(scheme=>scheme.coverage_state===requestedState));
+ const needsDiscovery=!matches.length || stale || missingState;
+ if (needsDiscovery) {
    // Queue approved-source discovery without letting public questions force repeated paid searches.
-   if (hasSearchKey()) await db.query(`update public.scheme_catalog_sources set next_check_at=least(next_check_at,now())
-     where kind='official_search' and enabled and (last_checked_at is null or last_checked_at<now()-interval '1 hour')`);
+   if (hasSearchKey()) {
+     const cursor=requestedState?searchPublishers.findIndex(publisher=>publisher.state===requestedState):null;
+     await db.query(`update public.scheme_catalog_sources set next_check_at=least(next_check_at,now()),
+       settings=case when $1::integer is null then settings else jsonb_set(settings,'{cursor}',to_jsonb($1::integer)) end
+       where kind='official_search' and enabled and (lease_until is null or lease_until<now())
+         and (last_checked_at is null or last_checked_at<now()-interval '1 hour')`,[cursor]);
+   }
    for (const scheme of matches.slice(0,3)) await db.query(`insert into public.scheme_recheck_requests(scheme_id) values($1)
      on conflict(scheme_id) do update set requested_at=now(),status='pending',error=null
      where scheme_recheck_requests.requested_at<now()-interval '1 day' and (scheme_recheck_requests.lease_until is null or scheme_recheck_requests.lease_until<now())`,[scheme.id]);
@@ -47,8 +56,8 @@ export async function answerQuestion(message:string,previousIds:string[]=[]) {
    cycle:scheme.academic_year,application_url:scheme.scheme_status==='closed'?null:scheme.application_url,
    official_url:scheme.official_url,last_verified_at:scheme.last_verified_at,
  }));
- if ((!matches.length || stale) && hasSearchKey()) {
-   void wakeCatalog('on-demand',false).catch(error=>console.error('On-demand source check:',error.message));
+ if (needsDiscovery && hasSearchKey()) {
+   void wakeCatalog('on-demand',true).catch(error=>console.error('On-demand source check:',error.message));
  }
  const focus=/document/i.test(message)?'documents':/deadline|closing|open|when|cycle/i.test(message)?'dates':'requirements';
  let reply=cards.length
@@ -67,6 +76,6 @@ export async function answerQuestion(message:string,previousIds:string[]=[]) {
  if (guided && citations.length && /document|eligibility|income/i.test(message)) {
    reply+='\n\nGuideline evidence for PM-USP CSSS\n'+citations.map(citation=>citation.evidence).join('\n');
  }
- return {reply, matches:cards,follow_up:followUp,ai_used:aiUsed,recheck_requested:(!matches.length || stale) && (hasSearchKey() || matches.length>0),
+ return {reply, matches:cards,follow_up:followUp,ai_used:aiUsed,recheck_requested:needsDiscovery && (hasSearchKey() || matches.length>0),
    citations,scheme_id:guided?SCHEME_ID:null,suggested_actions:[]};
 }

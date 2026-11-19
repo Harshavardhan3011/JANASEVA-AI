@@ -11,7 +11,7 @@ Choose readable, complete excerpts where possible. Preserve every figure, date, 
     : '';
   const description=descriptionSchema.parse(await generateProviderJson(prompt+discoveryRules,JSON.stringify({title:meta.title,source:sourceText})));
   if (['open','closed','rolling'].includes(description.status) && !meta.applicationPortalSource) {
-    description.reviewIssues.push('Verify current application status against the official application portal.');
+    description.status='unknown';description.statusEvidence=null;
   }
   return description;
 }

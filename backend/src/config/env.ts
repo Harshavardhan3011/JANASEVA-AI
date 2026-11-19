@@ -28,6 +28,8 @@ export const env = z.object({
   EMBEDDING_PROVIDER: z.enum(['gemini', 'openai']).default('gemini'),
   EMBEDDING_API_KEY: z.string().default(''),
   EMBEDDING_MODEL: z.string().default(''),
+  Adminmail: z.string().trim().default(''),
+  AdminPass: z.string().default(''),
   JWT_SECRET: z.string().default(''),
   MOCK_PORTAL_URL: z.url().default('http://127.0.0.1:3002'),
   PORTAL_SECRET: z.string().default(''),

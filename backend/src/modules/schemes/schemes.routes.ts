@@ -1,3 +1,4 @@
+import { searchPublishers } from '../catalog/catalog.publishers';
 import rateLimit from 'express-rate-limit';
 import { database } from '../../config/db';
 import { successResponse } from '../../shared/response';
@@ -9,6 +10,7 @@ import { getSchemes, getSchemeById, searchSchemes } from './schemes.controller';
 const router = Router();
 
 router.get('/', getSchemes);
+router.get('/locations',(_req,res)=>successResponse(res,[...new Set(searchPublishers.map(item=>item.state).filter(Boolean))].sort()));
 router.get('/:id', getSchemeById);
 router.post('/:id/refresh',rateLimit({windowMs:3600000,limit:10}),async(req,res)=>{
   const id=z.uuid().parse(req.params.id);

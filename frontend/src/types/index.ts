@@ -44,6 +44,7 @@ export type BrowserSessionStatus =
   | 'ABORTED';
 
 export interface User {
+  is_admin?: boolean;
   id: string;
   name: string;
   email: string;

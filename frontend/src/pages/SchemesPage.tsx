@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
+import { indianStates } from '../services/indianStates';
 import { api } from '../services/api';
 import { errorMessage } from '../services/workflow';
 import { SchemeCard } from '../components/SchemeCard';
@@ -11,6 +12,7 @@ export const SchemesPage=()=>{
  const [params,setParams]=useSearchParams();
  const query=params.get('q') || '';
  const [input,setInput]=useState(query);
+ const [states,setStates]=useState<string[]>(indianStates);
  const [state,setState]=useState('');
  const [category,setCategory]=useState('');
  const [status,setStatus]=useState('');
@@ -22,6 +24,11 @@ export const SchemesPage=()=>{
      .catch(err=>{if (!controller.signal.aborted) setError(errorMessage(err));});
    return ()=>controller.abort();
  },[query]);
+ useEffect(()=>{
+   const controller=new AbortController();
+   api.get('/schemes/locations',{signal:controller.signal}).then(result=>setStates(result.data.data || [])).catch(()=>{});
+   return ()=>controller.abort();
+ },[]);
  const matches=schemes?.filter(scheme=>(!state || !scheme.coverage_state || scheme.coverage_state===state) &&
    (!category || scheme.category===category) && (!status || scheme.scheme_status===status));
  return <div className="workflow">
@@ -33,7 +40,7 @@ export const SchemesPage=()=>{
      </form>
      <div className="grid gap-3 pt-4 sm:grid-cols-3">
        <label className="grid gap-2">State or UT<select value={state} onChange={event=>setState(event.target.value)}><option value="">All</option>
-         {[...new Set((schemes || []).map(scheme=>scheme.coverage_state).filter(Boolean))].sort().map(value=><option key={value} value={value!}>{value}</option>)}</select></label>
+         {[...new Set([...states,...(schemes || []).map(scheme=>scheme.coverage_state).filter(Boolean)])].sort().map(value=><option key={value} value={value!}>{value}</option>)}</select></label>
        <label className="grid gap-2">Category<select value={category} onChange={event=>setCategory(event.target.value)}><option value="">All</option>
          {[...new Set((schemes || []).map(scheme=>scheme.category).filter(Boolean))].sort().map(value=><option key={value} value={value!}>{value}</option>)}</select></label>
        <label className="grid gap-2">Application status<select value={status} onChange={event=>setStatus(event.target.value)}><option value="">All</option>

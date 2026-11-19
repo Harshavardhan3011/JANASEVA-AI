@@ -9,11 +9,16 @@ async function main() {
    const page=await browser.newPage({viewport:{width:390,height:844},isMobile:true,hasTouch:true});
    const errors=[];
    page.on('pageerror',error=>errors.push(error.message));
+   await page.route('**/schemes/locations',route=>route.fulfill({status:404,body:'Not found'}));
    await page.goto(base);
    await page.getByPlaceholder('Search schemes or ask a question').fill('scholarships');
    await page.getByRole('button',{name:'Find a scheme',exact:true}).click();
    await page.getByRole('heading',{name:'Explore schemes',exact:true}).waitFor();
    await page.getByRole('link',{name:'Official source',exact:true}).first().waitFor();
+   assert.equal(await page.getByRole('combobox',{name:'State or UT',exact:true}).locator('option').count(),37);
+   const navTop=(await page.locator('header nav').boundingBox()).y;
+   await page.locator('main').evaluate(element=>{element.scrollTop=800;});
+   assert.equal((await page.locator('header nav').boundingBox()).y,navTop);
    await page.getByRole('link',{name:'Ask AI',exact:true}).click();
    await page.getByRole('textbox',{name:'Your question',exact:true}).fill('Find scholarships for a third-year mechanical engineering student in Andhra Pradesh.');
    await page.getByRole('button',{name:'Ask JANASEVA AI',exact:true}).click();
@@ -25,6 +30,16 @@ async function main() {
    await page.locator('[name=confirmPassword]').fill('FinderTestPassword123!');
    await page.locator('button[type=submit]').click();
    await page.getByRole('heading',{name:'Saved schemes',exact:true}).waitFor();
+   await page.route('**/citizen-schemes',async route=>{
+     const response=await route.fetch();
+     const body=await response.json();
+     delete body.data.deadlines;delete body.data.recommendations;
+     await route.fulfill({response,json:body});
+   });
+   await page.reload();
+   await page.getByRole('heading',{name:'Saved schemes',exact:true}).waitFor();
+   await page.unroute('**/citizen-schemes');
+   await page.reload();
    await page.getByText('Optional profile — improve recommendations',{exact:true}).click();
    await page.getByRole('textbox',{name:'State or UT',exact:true}).fill('Andhra Pradesh');
    await page.getByRole('textbox',{name:'Occupation',exact:true}).fill('student');

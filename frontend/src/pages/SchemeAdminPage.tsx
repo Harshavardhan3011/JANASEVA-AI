@@ -1,6 +1,7 @@
 import { useEffect,useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 import { api } from '../services/api';
 import { errorMessage } from '../services/workflow';
 import { dateLabel,emptyDescription,schemeSections } from '../services/schemeDetails';
@@ -25,6 +26,7 @@ function ClaimInput({ claim,onChange }:{claim:Claim;onChange:(value:Claim)=>void
 }
 
 export const SchemeAdminPage=()=>{
+  const {user}=useAuth();
   const [key,setKey]=useState('');
   const [dashboard,setDashboard]=useState<Dashboard>();
   const [version,setVersion]=useState<Version>();
@@ -50,6 +52,13 @@ export const SchemeAdminPage=()=>{
       setError([errorMessage(err),details].filter(Boolean).join(' '));
     } finally { setBusy(false); }
   }
+  useEffect(()=>{
+    if (!user?.is_admin) return;
+    const controller=new AbortController();
+    api.get<{data:Dashboard}>(endpoint,{signal:controller.signal}).then(result=>setDashboard(result.data.data))
+      .catch(err=>{if (!controller.signal.aborted) setError(errorMessage(err));});
+    return ()=>controller.abort();
+  },[user?.is_admin]);
   const unlocked=Boolean(dashboard);
   useEffect(()=>{
     if (!unlocked) return;
@@ -81,13 +90,13 @@ export const SchemeAdminPage=()=>{
     <header className="workflow-heading"><div><h1>Government schemes administration</h1><p>Import official material, review changes, and monitor scheduled syncs.</p></div></header>
     {error ? <p role="alert" className="workflow-error">{error}</p> : null}
     {message ? <p role="status">{message}</p> : null}
-    <section className="workflow-card">
+    {!user?.is_admin && <section className="workflow-card">
       <form className="inline-actions" onSubmit={event=>{event.preventDefault();void act(loadDashboard);}}>
         <label className="grid gap-1">Monitor review key<input type="password" autoComplete="off" value={key} disabled={busy}
           onChange={event=>{setKey(event.target.value);setDashboard(undefined);setVersion(undefined);}} required/></label>
         <button className="secondary-action" disabled={busy}>{dashboard?'Refresh dashboard':'Unlock administration'}</button>
       </form>
-    </section>
+    </section>}
     {dashboard ? <>
       <section className="workflow-card"><h2>Official source registry</h2>
         <p>Confirm the access method and publisher terms before approving a source. Feed and API contracts require a dedicated connector.</p>

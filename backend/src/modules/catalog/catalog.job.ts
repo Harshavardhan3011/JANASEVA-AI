@@ -78,9 +78,16 @@ export async function runCatalogSync(trigger='scheduled',autoPublish=true) {
           let published=false;
           if (draft.status==='generation_failed') {
             counters.failed++;
-          } else if (autoPublish && env.SCHEME_CATALOG_AUTO_PUBLISH && !metadata.reviewNote && draft.status==='draft' && draft.description?.overview.length) {
+          } else if (autoPublish && env.SCHEME_CATALOG_AUTO_PUBLISH && draft.status==='draft' && draft.description?.overview.length) {
             published=Boolean(await publishVersion(draft.id,null));
             if (published) counters.published++;
+            else {
+              draft.error='Automatic verification needs clearer, consistent official evidence. A later sync will retry.';
+              await db.query(`update public.scheme_catalog_versions set status='generation_failed',
+                error='Automatic verification needs clearer, consistent official evidence. A later sync will retry.',
+                retry_at=now()+interval '1 hour' where id=$1 and status<>'published'`,[draft.id]);
+              counters.failed++;
+            }
           }
           outcomes.push({ url:candidate.url,result:capture.kind,published,error:draft.error || undefined });
         } catch(error) {

@@ -57,14 +57,14 @@ export async function generateVersion(id:string,force=false) {
   const db=await database();
   const { rows:[original] }=await db.query<Version>('select * from public.scheme_catalog_versions where id=$1',[id]);
   if (!original) throw AppError.notFound('Draft not found.');
-  if (original.status==='published' || (!force && original.description)) return original;
+  if (original.status==='published' || (!force && original.description && original.status==='draft')) return original;
   const token=randomUUID();
   const { rows:[current] }=await db.query<Version>(`
     update public.scheme_catalog_versions v set generation_attempts=generation_attempts+1,
       generation_lease_until=now()+interval '2 minutes',generation_token=$2
     from public.scheme_catalog_imports i where v.id=$1 and i.current_version=v.id and v.status<>'published'
       and (v.generation_lease_until is null or v.generation_lease_until<now())
-      and ($3::boolean or (v.description is null and (v.retry_at is null or v.retry_at<=now())))
+      and ($3::boolean or ((v.description is null or v.status='generation_failed') and (v.retry_at is null or v.retry_at<=now())))
     returning v.*
   `,[id,token,force]);
   if (!current) return original;
@@ -122,8 +122,8 @@ export async function publishVersion(id:string,actor:string|null) {
     if (!draft?.overview.length) throw AppError.badRequest('Add an overview supported by the official material before publishing.');
     const validation=verifyDescription(draft,version.source_text);
     if (validation.problems.length) throw AppError.badRequest(validation.problems.join(' '));
-    if (!actor && (!validation.extractive || draft.reviewIssues.length || version.metadata.incomplete || version.metadata.reviewNote ||
-      (!draft.eligibility.length && !draft.whoCanApply.length) || !draft.benefits.length)) return null;
+    if (!actor && (draft.reviewIssues.length || version.metadata.incomplete ||
+      /list of schemes|older amounts|rather than define|uploaded PDF/i.test(version.metadata.reviewNote || ''))) return null;
 
     let schemeId=entry.scheme_id;
     if (!schemeId) {

@@ -90,7 +90,7 @@ test('background import, validated publication, AP review, deduplication and fai
       const evidence=text.match(/[^.]{5,180}NTR Bharosa Pension Scheme[^.]{0,80}/i)?.[0]?.trim() ||
         input.source.split('\n').map(compact).find(line=>line.length>45 && line.length<1000) || text.slice(0,100);
       const filled:SchemeDescription={
-        overview:[makeClaim(isCentral?'The Sunrise Household Scheme provides household support.':evidence)],
+        overview:isCentral?[{text:'The scheme offers household support.',quote:'The Sunrise Household Scheme provides household support.'}]:[makeClaim(evidence)],
         benefits:isDiscovered?[makeClaim('The grant is ₹2,000 per household.')]:isCentral?[makeClaim('The grant is ₹'+amount+' per household.')]:[],
         whoCanApply:[],eligibility:isDiscovered?[makeClaim('Farmers with up to two hectares can apply.')]:isCentral?[makeClaim('Households residing in the district can apply.')]:[],
         documents:[],applicationSteps:[],dates:[],contacts:[],status:'unknown',statusEvidence:null,reviewIssues:[],
@@ -148,7 +148,7 @@ test('background import, validated publication, AP review, deduplication and fai
     await request(admin,undefined,401);
     const {data:summary}=await request(admin,{headers});
     const apImport=summary.imports.find((item:any)=>item.metadata.title==='NTR Bharosa Pension Scheme');
-    assert.equal(apImport.status,'draft');
+    assert.equal(apImport.status,'generation_failed');
     assert.equal(apImport.scheme_id,null,'conflicting official source waited for review');
     const {data:details}=await request(admin+'/versions/'+apImport.version_id,{headers});
     assert.match(details.source_text,/Pension Scheme/i);
@@ -312,8 +312,8 @@ test('background import, validated publication, AP review, deduplication and fai
     const discoveryRun=discoverySummary.runs.find((run:any)=>run.trigger_kind==='test-discover');
     assert.equal(discoveryRun.added,2);
     assert.equal(discoveryRun.published,1);
-    assert.equal(discoveryRun.failed,1);
-    assert.ok(discoveryRun.error.includes('disallows automated access'));
+    assert.equal(discoveryRun.failed,2);
+    assert.ok(discoveryRun.outcomes.some((outcome:any)=>outcome.error?.includes('disallows automated access')));
     assert.equal(discoverySummary.imports.find((item:any)=>item.metadata.title==='All schemes').scheme_id,null);
 
     await markDue();await runCatalogSync('test-next-publisher');
@@ -366,6 +366,23 @@ test('background import, validated publication, AP review, deduplication and fai
     await assert.rejects(assertPublicHost('www.pib.gov.in'),/non-public/);
     dns.lookup=async()=>[{address:'8.8.8.8',family:4}];
     await assertPublicHost('www.pib.gov.in');
+    const {data:locations}=await request('/schemes/locations');
+    assert.equal(locations.length,36);
+    assert.ok(locations.includes('Andhra Pradesh') && locations.includes('Tamil Nadu'));
+    env.Adminmail='configured-admin@example.test';env.AdminPass='ConfiguredAdminPassword123!';
+    await request('/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:'Impersonator',email:env.Adminmail,password:'FakePassword123!'})},403);
+    await request('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:env.Adminmail,password:'WrongPassword'})},401);
+    const {data:adminSession}=await request('/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email:env.Adminmail,password:env.AdminPass})});
+    assert.equal(adminSession.user.is_admin,true);
+    const adminSessionHeaders={Authorization:'Bearer '+adminSession.token};
+    await request(admin,{headers:adminSessionHeaders});
+    const {data:adminMe}=await request('/auth/me',{headers:adminSessionHeaders});
+    assert.equal(adminMe.user.is_admin,true);
+    env.AdminPass='RotatedAdminPassword123!';
+    await request(admin,{headers:adminSessionHeaders},403);
 
 
     assert.ok(after.runs.some((run:any)=>run.trigger_kind==='test-updated' && run.changed===1 && run.published===1));

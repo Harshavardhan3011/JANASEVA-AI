@@ -24,7 +24,14 @@ export const DashboardPage=()=>{
  useEffect(()=>{
    const controller=new AbortController();setError('');
    api.get('/citizen-schemes',{signal:controller.signal}).then(result=>{
-     const dashboard=result.data.data as Dashboard;
+     const raw=result.data.data || {};
+     const dashboard:Dashboard={
+       ...raw,state:raw.state || '',profile:raw.profile || {},
+       watches:Array.isArray(raw.watches)?raw.watches:[],
+       alerts:Array.isArray(raw.alerts)?raw.alerts:[],
+       recommendations:Array.isArray(raw.recommendations)?raw.recommendations:[],
+       deadlines:Array.isArray(raw.deadlines)?raw.deadlines:[],
+     };
      setData(dashboard);setProfile({...emptyProfile,...dashboard.profile,state:dashboard.state});
    }).catch(err=>{if (!controller.signal.aborted) setError(errorMessage(err));});
    return ()=>controller.abort();

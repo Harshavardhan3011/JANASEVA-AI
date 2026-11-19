@@ -59,7 +59,7 @@ function EligibilityChecklist({watch,onSave,busy}:{
       <button className="primary-action" disabled={busy}>Save assessment</button>
     </form>}
     <h3 className="font-bold">Documents to prepare</h3>
-    {watch.description?.documents.length ? <ul className="list-disc pl-5">{watch.description.documents.map((claim,index)=>
+    {watch.description?.documents?.length ? <ul className="list-disc pl-5">{watch.description.documents.map((claim,index)=>
       <li key={index}>{claim.text}<details><summary>Official evidence</summary><blockquote>{claim.quote}</blockquote></details></li>)}</ul>
       : <p>Not specified in the official source.</p>}
   </div>;
@@ -75,7 +75,8 @@ export const MySchemesPage=()=>{
   useEffect(()=>{
     const controller=new AbortController();
     api.get<{data:Dashboard}>('/citizen-schemes',{signal:controller.signal}).then(result=>{
-      setData(result.data.data);setState(result.data.data.state);
+      const raw=result.data.data;
+      setData({...raw,watches:raw.watches || [],alerts:raw.alerts || []});setState(raw.state || '');
     }).catch(err=>{if (!controller.signal.aborted) setError(errorMessage(err));});
     return ()=>controller.abort();
   },[view]);

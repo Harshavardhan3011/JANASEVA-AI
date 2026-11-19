@@ -29,9 +29,9 @@ export const AppLayout: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row">
+    <div className="h-dvh overflow-hidden bg-slate-50 flex flex-col md:flex-row">
       {/* Mobile Header */}
-      <div className="md:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
+      <div className="md:hidden shrink-0 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center space-x-2">
           <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white">
             <ShieldCheck className="w-5 h-5" />
@@ -110,9 +110,9 @@ export const AppLayout: React.FC = () => {
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0 min-w-0 overflow-hidden">
         {/* Top Header */}
-        <header className="hidden md:flex h-16 bg-white border-b border-slate-200 px-8 items-center justify-between">
+        <header className="hidden md:flex shrink-0 h-16 bg-white border-b border-slate-200 px-8 items-center justify-between">
           <div className="flex items-center space-x-3">
             <span className="text-sm text-slate-500 font-normal">Active Session:</span>
             <span className="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -127,7 +127,7 @@ export const AppLayout: React.FC = () => {
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <Outlet />
         </main>
       </div>

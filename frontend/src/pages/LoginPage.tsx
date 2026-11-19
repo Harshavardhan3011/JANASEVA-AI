@@ -1,3 +1,4 @@
+import { api } from '../services/api';
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -30,7 +31,8 @@ export const LoginPage: React.FC = () => {
     try {
       setServerError(null);
       await login(data.email, data.password);
-      navigate('/dashboard');
+      const sessionReply=await api.get('/auth/me');
+      navigate(sessionReply.data.user?.is_admin?'/schemes/admin':'/dashboard');
     } catch (err: any) {
       setServerError(err.message || 'Login failed. Please verify your credentials.');
     }
