@@ -37,6 +37,7 @@ export function errorHandler(
         code: 'VALIDATION_ERROR',
         message: 'Invalid request data',
         details: err.flatten().fieldErrors,
+        issues: err.issues.map(issue=>({path:issue.path,message:issue.message})),
       },
     });
     return;

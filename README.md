@@ -446,6 +446,8 @@ Latest recorded implementation checks passed 14 backend tests, frontend type che
 | --- | --- |
 | API root returns `Cannot GET /` | API-only host: check `/api/v1/ready`; open the frontend host for the website. |
 | Frontend API 404 | Include `/api/v1` in `VITE_API_URL`, deploy matching backend routes, rebuild frontend. |
+| Draft save validation error | Complete the named section/item: public wording needs 3–1600 characters and an exact source quotation needs 5–2400. Untouched blank rows are ignored; partial rows must be completed or removed. Missing sections may remain empty. |
+| AI generation failed | Retry after checking the reported HTTP status: authentication/permissions, model availability, quota/rate limit, or provider outage. Existing source text and published versions are preserved. |
 | Readiness 503 | Database, credentials, migrations, trusted TLS certificates. |
 | Missing verification email | Deployed route, credentials, authorized sender, public URL, delivery logs. Authentication and timeout errors are different failures. |
 | Resend 429 | Honor countdown/`Retry-After`; email limits persist across redeploys. Check proxy depth if IP buckets are grouped. |

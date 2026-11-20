@@ -7,13 +7,24 @@ interface PolicyProvider {
 }
 
 async function post(url: string, headers: Record<string, string>, payload: unknown, timeout=7500) {
-  const response = await fetch(url, {
+  let response:Response;
+  try { response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', ...headers },
     body: JSON.stringify(payload),
     signal: AbortSignal.timeout(timeout),
-  });
-  if (!response.ok) throw new Error('AI provider request failed');
+    redirect:'error',
+  }); } catch(error) {
+    const timedOut=error instanceof Error && ['TimeoutError','AbortError'].includes(error.name);
+    throw new Error(timedOut?'AI provider timed out. Retry later; the source is preserved.':'AI provider could not be reached. Retry later; the source is preserved.');
+  }
+  if (!response.ok) {
+    // Never expose provider response bodies, request URLs, or credentials in saved errors.
+    const hint=response.status===401?'Check the server LLM_API_KEY.':response.status===403?'Check API key permissions and model access.':
+      response.status===404?'Check LLM_MODEL and model availability.':response.status===429?'The provider quota or rate limit was reached. Check usage and retry later.':
+      response.status>=500?'The provider is temporarily unavailable. Retry later.':'Check the configured provider and model request.';
+    throw new Error('AI provider request failed (HTTP '+response.status+'). '+hint);
+  }
   return response.json();
 }
 

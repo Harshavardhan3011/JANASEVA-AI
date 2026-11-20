@@ -6,6 +6,7 @@ import { api } from '../services/api';
 import { errorMessage } from '../services/workflow';
 import { dateLabel,emptyDescription,schemeSections } from '../services/schemeDetails';
 import type { Claim,Description,SchemeStatus,Section } from '../services/schemeDetails';
+import { draftFieldLabel,prepareDraft } from '../services/schemeDraft';
 
 const endpoint='/scheme-catalog-admin';
 const categories=['Other','Agriculture','Education','Employment','Finance','Health','Housing','Infrastructure','Social welfare'];
@@ -18,10 +19,10 @@ interface Version {id:string;source_url:string;original_title:string;source_text
 
 function ClaimInput({ claim,onChange }:{claim:Claim;onChange:(value:Claim)=>void}) {
   return <div className="input-grid">
-    <label>Public wording<textarea className="rounded-md border border-slate-300 p-2" value={claim.text}
-      rows={3} onChange={event=>onChange({...claim,text:event.target.value})}/></label>
-    <label>Exact passage from official source<textarea className="rounded-md border border-slate-300 p-2" value={claim.quote}
-      rows={3} onChange={event=>onChange({...claim,quote:event.target.value})}/></label>
+    <label>Public wording<textarea aria-label="Public wording" className="rounded-md border border-slate-300 p-2" value={claim.text}
+      minLength={3} maxLength={1600} placeholder="Describe one claim (at least 3 characters)" rows={3} onChange={event=>onChange({...claim,text:event.target.value})}/></label>
+    <label>Exact passage from official source<textarea aria-label="Exact passage from official source" className="rounded-md border border-slate-300 p-2" value={claim.quote}
+      minLength={5} maxLength={2400} placeholder="Copy the supporting source passage (at least 5 characters)" rows={3} onChange={event=>onChange({...claim,quote:event.target.value})}/></label>
   </div>;
 }
 
@@ -50,9 +51,11 @@ export const SchemeAdminPage=({section='editor'}:{section?:'editor'|'sources'})=
     setBusy(true);setError('');setMessage('');
     try { await fn(); }
     catch(err) {
-      const response=(err as {response?:{data?:{error?:{details?:Record<string,string[]>}}}})?.response?.data;
-      const details=response?.error?.details ? Object.values(response.error.details).flat().join(' ') : '';
-      setError([errorMessage(err),details].filter(Boolean).join(' '));
+      const response=(err as {response?:{data?:{error?:{issues?:Array<{path:Array<string|number>;message:string}>;details?:Record<string,string[]>}}}})?.response?.data;
+      const issues=response?.error?.issues;
+      const details=issues?.length ? issues.map(issue=>draftFieldLabel(issue.path)+': '+issue.message).join('\n') :
+        response?.error?.details ? Object.entries(response.error.details).map(([field,messages])=>field+': '+messages.join(' ')).join('\n') : '';
+      setError(response ? [errorMessage(err),details].filter(Boolean).join('\n') : err instanceof Error ? err.message : errorMessage(err));
     } finally { setBusy(false); }
   }
   useEffect(()=>{
@@ -99,7 +102,7 @@ export const SchemeAdminPage=({section='editor'}:{section?:'editor'|'sources'})=
   return <div className="workflow">
     <Link className="back-link" to="/schemes">← Schemes</Link>
     <header className="workflow-heading"><div><h1>{section==='sources'?'Official sources':'Scheme evidence and editor'}</h1><p>Import official material, review changes, and monitor scheduled syncs.</p></div></header>
-    {error ? <p role="alert" className="workflow-error">{error}</p> : null}
+    {error ? <p role="alert" className="workflow-error whitespace-pre-line">{error}</p> : null}
     {message ? <p role="status">{message}</p> : null}
     {dashboard ? <>
       {section==='sources' && <><section className="workflow-card"><h2>Official source registry</h2>
@@ -188,6 +191,7 @@ export const SchemeAdminPage=({section='editor'}:{section?:'editor'|'sources'})=
         {version.metadata.reviewNote ? <p role="note">{version.metadata.reviewNote}</p> : null}
         {version.metadata.incomplete ? <p role="note">Source text may be incomplete.</p> : null}
         {version.error ? <p role="note">{version.error}</p> : null}
+        {version.status==='generation_failed' ? <p role="note">AI generation did not complete. The official text and any published version are preserved. Retry after fixing the provider issue, or enter supported claims below. This page may describe an announcement rather than a scheme; do not publish it as a scheme unless its evidence supports that.</p> : null}
         {draft.reviewIssues.map(issue=><p key={issue} role="note">{issue}</p>)}
         <details className="mt-3"><summary className="cursor-pointer font-semibold">Official source text</summary>
           <pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-100 p-3 text-sm">{version.source_text}</pre>
@@ -202,10 +206,13 @@ export const SchemeAdminPage=({section='editor'}:{section?:'editor'|'sources'})=
           <p>Application status: {version.published_description.status} → {draft.status}</p>
         </details> : null}
         {version.status!=='published' ? <button className="secondary-action mt-3" disabled={busy} onClick={()=>void act(async()=>{
-          await api.post(path+'/retry',{}, {...config,timeout:100000});await open(version.id);await loadDashboard();
+          const result=await api.post<{data:Version}>(path+'/retry',{}, {...config,timeout:100000});await open(version.id);await loadDashboard();
+          if (result.data.data.status==='generation_failed') setError(result.data.data.error || 'AI generation failed. Your source is preserved; check the provider configuration before retrying.');
+          else setMessage('Loaded the latest generation result.');
         })}>Retry AI generation</button> : null}
         <fieldset disabled={busy || version.status==='published'}>
-          {schemeSections.map(([section,label])=><details className="mt-3 rounded-md border border-slate-200 p-3" key={section} open={section==='overview'||undefined}>
+          <p className="mt-3 text-sm">Each item needs public wording (3–1600 characters) and an exact supporting source passage (5–2400 characters). Empty added rows are ignored; complete or remove partially filled rows. Leave missing sections empty.</p>
+          {schemeSections.map(([section,label])=><details className="mt-3 rounded-md border border-slate-200 p-3" key={section} open={section==='overview'||error.includes(label+' item')||undefined}>
             <summary className="cursor-pointer font-semibold">{label} ({draft[section].length})</summary>
             {(draft[section] || []).map((claim,index)=><div key={index} className="pb-2">
               <ClaimInput claim={claim} onChange={value=>updateClaim(section,index,value)}/>
@@ -224,9 +231,11 @@ export const SchemeAdminPage=({section='editor'}:{section?:'editor'|'sources'})=
             <label className="grid gap-2 mt-3">Review reason<textarea value={reason} minLength={5} maxLength={1000} onChange={event=>setReason(event.target.value)}/></label>
             <label className="approval-check"><input type="checkbox" checked={verified} onChange={event=>setVerified(event.target.checked)}/>I verified the public description against the official source.</label>
             <div className="inline-actions mt-4">
-              <button className="secondary-action" onClick={()=>void act(async()=>{await api.put(path,draft,config);setMessage('Draft saved.');await loadDashboard();})}>Save draft</button>
+              <button className="secondary-action" onClick={()=>void act(async()=>{const payload=prepareDraft(draft);await api.put(path,payload,config);setDraft(payload);setVersion(current=>current?{...current,description:payload,status:'draft',error:null}:current);setMessage('Draft saved.');await loadDashboard();})}>Save draft</button>
               <button className="primary-action !mt-0" disabled={!verified || reason.trim().length<5} onClick={()=>void act(async()=>{
-                await api.put(path,draft,config);
+                const payload=prepareDraft(draft);
+                if (!payload.overview.length) throw new Error('Overview: add at least one claim with an exact official source passage before publishing.');
+                await api.put(path,payload,config);setDraft(payload);
                 await api.post('/admin/review/'+version.id,{action:'approve',reason},config);await open(version.id);await loadDashboard();
                 setMessage('Scheme published.');
               })}>Publish verified version</button>

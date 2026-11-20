@@ -194,6 +194,11 @@ test('background import, validated publication, AP review, deduplication and fai
       } finally { await browser.close(); }
     }
     const importBody={url:ap,title:'NTR Bharosa Pension Scheme',issuer:'Andhra Pradesh Panchayat Raj and Rural Development Department',state:'Andhra Pradesh',category:'Social welfare'};
+    const invalidSave=await actual(base+admin+'/versions/'+apImport.version_id,{method:'PUT',headers,
+      body:JSON.stringify({...details.description,overview:[{text:'',quote:''}]})});
+    assert.equal(invalidSave.status,400);
+    const invalidReply=await invalidSave.json() as {error:{issues:Array<{path:Array<string|number>}>}};
+    assert.deepEqual(invalidReply.error.issues.map(issue=>issue.path),[['overview',0,'text'],['overview',0,'quote']]);
     const {data:repeat}=await request(admin+'/import',{method:'POST',headers,body:JSON.stringify(importBody)});
     assert.equal(repeat.result,'skipped');
     assert.equal(repeat.version.id,apImport.version_id);
@@ -405,4 +410,25 @@ test('background import, validated publication, AP review, deduplication and fai
     await closeDatabase();
     await rm(directory,{recursive:true,force:true}).catch(()=>{});
   }
+});
+
+test('AI provider errors explain HTTP failures without retaining provider secrets',async()=>{
+  const {env}=await import('../config/env');
+  const {generateProviderJson}=await import('../ai/providers/llm.provider');
+  const originalFetch=globalThis.fetch, previousKey=env.LLM_API_KEY;
+  env.LLM_API_KEY='private-fixture-key';
+  try {
+    for (const [status,hint] of [[400,'provider and model'],[401,'LLM_API_KEY'],[403,'permissions'],[404,'LLM_MODEL'],[429,'quota'],[503,'temporarily unavailable']] as const) {
+      globalThis.fetch=async()=>new Response('sensitive body private-fixture-key',{status});
+      await assert.rejects(()=>generateProviderJson('system','evidence'),error=>{
+        const message=(error as Error).message;
+        assert.ok(message.includes('HTTP '+status));assert.ok(message.includes(hint));
+        assert.ok(!message.includes('private-fixture-key') && !message.includes('sensitive body'));return true;
+      });
+    }
+    globalThis.fetch=async()=>{throw new DOMException('sensitive timeout','TimeoutError');};
+    await assert.rejects(()=>generateProviderJson('system','evidence'),/timed out/);
+    globalThis.fetch=async()=>{throw new Error('sensitive request URL');};
+    await assert.rejects(()=>generateProviderJson('system','evidence'),/could not be reached/);
+  } finally {globalThis.fetch=originalFetch;env.LLM_API_KEY=previousKey;}
 });

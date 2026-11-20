@@ -195,6 +195,34 @@ async function main() {
     await page.getByRole('heading',{name:'Administration',exact:true}).waitFor();
     assert.equal(outbox.length,mailCount,'Server-configured admin signs in and restores the session without email.');
     assert.equal((await (await database()).query('select email_verified_at from public.users where email=$1',[env.Adminmail])).rows[0].email_verified_at,null);
+    const quote='The fixture scheme provides support for eligible residents.';
+    const {captureDocument}=require('../backend/dist/modules/catalog/catalog.repo');
+    const {version:editorVersion}=await captureDocument({title:'Editor test scheme',issuer:'Fixture department',category:'Other'},
+      {url:'https://www.pib.gov.in/editor-fixture',originalTitle:'Editor test scheme',text:quote,applyUrl:null,incomplete:false});
+    await (await database()).query("update public.scheme_catalog_versions set status='generation_failed',error='AI provider request failed' where id=$1",[editorVersion.id]);
+    await page.goto(frontend+'/admin/schemes?version='+editorVersion.id);
+    await page.getByRole('heading',{name:'Editor test scheme',exact:true}).waitFor();
+    await page.getByText(/AI generation did not complete/).waitFor();
+    const overview=page.locator('details').filter({has:page.locator('summary').filter({hasText:/^Overview \(/})});
+    await overview.getByRole('button',{name:'Add item',exact:true}).click();
+    await page.getByRole('button',{name:'Save draft',exact:true}).click();
+    await page.getByRole('status').filter({hasText:'Draft saved.'}).waitFor();
+    assert.deepEqual((await (await database()).query('select description from public.scheme_catalog_versions where id=$1',[editorVersion.id])).rows[0].description.overview,[]);
+    await overview.getByRole('button',{name:'Add item',exact:true}).click();
+    await overview.getByLabel('Public wording',{exact:true}).fill('Support for eligible residents.');
+    let saves=0;page.on('request',request=>{if(request.method()==='PUT' && request.url().includes('/versions/')) saves++;});
+    await page.getByRole('button',{name:'Save draft',exact:true}).click();
+    await page.getByRole('alert').filter({hasText:'Overview item 1 — official source passage'}).waitFor();
+    assert.equal(saves,0,'Incomplete claims are identified before sending an invalid API request.');
+    await overview.getByLabel('Exact passage from official source',{exact:true}).fill('This quote is not in the official source.');
+    await page.getByRole('button',{name:'Save draft',exact:true}).click();
+    await page.getByRole('alert').filter({hasText:'citation does not match'}).waitFor();
+    await overview.getByLabel('Exact passage from official source',{exact:true}).fill(quote);
+    await page.getByRole('button',{name:'Save draft',exact:true}).click();
+    await page.getByRole('status').filter({hasText:'Draft saved.'}).waitFor();
+    assert.equal((await (await database()).query('select description from public.scheme_catalog_versions where id=$1',[editorVersion.id])).rows[0].description.overview[0].quote,quote);
+    await page.getByRole('button',{name:'Retry AI generation',exact:true}).click();
+    await page.getByRole('alert').filter({hasText:'LLM_API_KEY is not configured'}).waitFor();
     assert.deepEqual(errors,[]);
     console.log('PASS: desktop/mobile account navigation, pending gate, explicit verification, dashboard, save, reset, preserved saved schemes. Emails captured locally; production delivery unverified.');
   } finally {
