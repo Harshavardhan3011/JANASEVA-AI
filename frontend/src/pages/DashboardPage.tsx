@@ -47,6 +47,11 @@ export const DashboardPage=({view='overview'}:{view?:'overview'|'saved'|'profile
  return <div className="workflow">
    <header className="workflow-heading"><div><h1>{view==='saved'?'Saved schemes':view==='profile'?'My preferences':view==='checklists'?'My checklists':'Welcome, '+(user?.name?.split(' ')[0] || 'citizen')+'.'}</h1><p>Find support, save useful schemes and check your next steps.</p></div></header>
    <div className="inline-actions"><Link className="primary-action" to="/schemes">Find a scheme</Link><Link className="secondary-action" to="/ask">Ask JANASEVA AI</Link></div>
+   {view==='overview' && <section className="dashboard-metrics" aria-label="Personal workspace summary">
+     <Link to="/dashboard/saved"><strong>{data?.watches.length ?? '—'}</strong><span>Saved records</span></Link>
+     <Link to="/dashboard/profile"><strong>{Math.round(['state','district','occupation','education'].filter(key=>profile[key as keyof Profile]).length/4*100)}%</strong><span>Optional profile complete</span></Link>
+     <Link to="/dashboard/drafts"><strong>Review & prepare</strong><span>Your personal drafts</span></Link>
+   </section>}
    {error && <p role="alert" className="workflow-error">{error}</p>}
    {message && <p role="status">{message}</p>}
    {(view==='overview' || view==='profile') && <section className="workflow-card"><details open={view==='profile'||undefined}><summary className="cursor-pointer font-semibold">Optional profile — improve recommendations</summary>

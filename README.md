@@ -1,8 +1,10 @@
 # JANASEVA AI
 
-**Government scheme discovery, official-source explanations, and a personal citizen dashboard.**
+**India-wide government information, official-source explanations, and a personal citizen workspace.**
 
 JANASEVA AI helps citizens find relevant government schemes, understand requirements, save useful results, and open official application portals. It combines public search, an AI-assisted question interface, personal preparation tracking, and administration of sources and discovery jobs.
+
+The shared catalogue also supports citizen services, public notices, recruitment/exams/results, rules and notifications, directories, helplines, grievance/RTI guidance, scheme updates, public events and official FAQs. Each type has the appropriate facts and actions: a hearing is not displayed as a new pension scheme, and a meeting does not receive an application button. See the [government information expansion and verification report](docs/government-records.md) for the implementation, tested official sources and production setup status.
 
 The broader vision is international scheme discovery. **The current implementation focuses on India**, including Central and State/UT sources. This is a general scheme finder, not a college-only scholarship website. A retained PM-USP CSSS workflow separately demonstrates scholarship screening and application preparation against a local mock portal.
 
@@ -49,6 +51,7 @@ The platform does not sanction benefits or guarantee eligibility. Issuing author
 - Recommendations explain text, category, jurisdiction, or occupation matches. They are candidates to check, not eligibility decisions.
 - Saves and checklist progress belong to each signed-in account; duplicate saves are prevented.
 - Followers can receive in-app publication alerts. Scheme-change email/push alerts are not configured.
+- Personal preparation drafts prefill confirmed account/profile details, stay editable, and can be copied after review. No unsupported external government submission is performed.
 - Browsing/search are public; saving and other personal actions require login.
 
 ### Administrative features
@@ -194,6 +197,7 @@ No source webhook connector is verified. All 36 State/UT filter options exist, b
 | `/accept-invitation` | Admin invitation acceptance. |
 | `/dashboard` | Personal overview, recommendations, saves, deadlines. |
 | `/dashboard/saved`, `/dashboard/checklists`, `/dashboard/profile` | Saves, progress, optional preferences. |
+| `/dashboard/drafts`, `/dashboard/drafts/:id` | Owner-only, profile-prefilled preparation drafts and review/copy actions. |
 | `/dashboard/notices`, `/my-schemes` | Notices and retained assessments/following/alerts. |
 | `/admin` | Admin overview. |
 | `/admin/schemes`, `/admin/review`, `/admin/review/notices` | Management and review. |
@@ -232,10 +236,11 @@ Supabase hosts PostgreSQL and private Storage. **Login uses custom Express authe
 | Schemes/evidence | `schemes`, `scheme_catalog_imports`, `scheme_catalog_versions`, `policy_documents`, `document_chunks` |
 | Sources/jobs | `scheme_source_registry`, `scheme_catalog_sources`, `scheme_catalog_runs`, `scheme_recheck_requests`, `discovery_requests` |
 | Personal | `citizen_scheme_profiles`, `citizen_scheme_watches`, `citizen_scheme_progress`, `citizen_scheme_assessments`, `citizen_scheme_alerts` |
+| Preparation/configuration | `citizen_form_drafts`, `catalog_categories`; typed facts/dates live in versioned description JSON. |
 | Notices/audit | `scheme_monitor_sources`, `scheme_monitor_items`, `admin_audit` |
 | Guided workflow | `applications`, `uploaded_documents`, `eligibility_checks`, `approvals`, `browser_sessions`, `agent_events`, `conversations` |
 
-Migrations `001`–`012` cover schema/security, catalogs, versioning, alerts, finder preferences, admin sessions, email auth, and dashboards. Hosted applied files are recorded in `janaseva_migrations`, transactionally per file. Use migrations rather than resetting accounts or saved data.
+Migrations `001`–`012` cover schema/security, catalogs, versioning, alerts, finder preferences, admin sessions, email auth, and dashboards. `20261120134249_government_records.sql` adds private preparation drafts, categories, protected human edits and a scoped ingestion role; `20261120142343_ingestion_maintenance.sql` preserves bounded registration cleanup without exposing citizen tables to that role. Hosted applied files are recorded in `janaseva_migrations`, transactionally per file. Use migrations rather than resetting accounts or saved data.
 
 The hosted runner also applies reviewed base-scheme seeds and refreshes reviewed NSP seeds. Seed records do not prove current application windows. Test/demo fixtures must remain in isolated databases, not the production catalog.
 
@@ -332,6 +337,7 @@ Root `.env` supplies backend/migration settings. Hosted values belong in deploym
 | --- | --- |
 | `NODE_ENV`, `PORT`, `FRONTEND_URL` | Mode, listener port, allowed frontend origin. |
 | `DATABASE_URL` | Hosted PostgreSQL; blank for local embedded storage. |
+| `INGESTION_DATABASE_URL` | Optional dedicated worker login; worker pools use `SET ROLE janaseva_ingestor` and cannot read accounts or citizen drafts. |
 | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `STORAGE_BUCKET` | Server-only private Storage; bucket defaults to `documents`. |
 | `JWT_SECRET`, `PORTAL_SECRET` | Independent production web secrets, at least 32 characters; generated locally if absent. |
 | `Adminmail`, `AdminPass` | Exact case-sensitive default-admin setting names. |
@@ -364,7 +370,7 @@ Install backend dependencies, configure the intended TLS-enabled `DATABASE_URL`,
 npm run db:migrate
 ```
 
-This applies migrations `001`–`012` and reviewed seeds. Local PGlite initializes on startup instead. Use the provider-supported connection string and trusted certificate chain; percent-encode special characters in passwords.
+This applies the ordered migrations, including `20261120134249_government_records.sql`, and reviewed seeds. The government-record migration has already been applied to the existing hosted project; other environments still need it. Local PGlite initializes on startup instead. Use the provider-supported connection string and trusted certificate chain; percent-encode special characters in passwords.
 
 ### 2. Render API
 
@@ -401,6 +407,7 @@ The API scheduler wakes once a minute while running and checks due sources. Each
 `.github/workflows/scheme-sync.yml` has the same daily schedule and manual **Run workflow**. Configure repository Actions secrets:
 
 - `JANASEVA_DATABASE_URL`
+- `JANASEVA_INGESTION_DATABASE_URL` (optional dedicated worker connection, alternative to the above)
 - `JANASEVA_LLM_API_KEY`
 - `JANASEVA_TAVILY_API_KEY`, or `JANASEVA_SCHEME_SEARCH_API_KEY` for Brave
 
@@ -416,7 +423,9 @@ npm run schemes:sync
 node backend/dist/run-scheme-sync.js
 ```
 
-The npm command uses the TypeScript entry point and processes due work. Admin **Sync now** also makes enabled, available sources due. The worker cleans eligible abandoned new registrations without deleting established accounts or saved data.
+The npm command uses the TypeScript entry point and processes due work. Admin **Sync now** also makes enabled, available sources due. The restricted standalone worker has no direct account access; it preserves abandoned-registration cleanup through a bounded private maintenance function.
+
+Read-only production checks found scheduled GitHub run `44712189875` failed because its database secret was missing. Configure `JANASEVA_DATABASE_URL` or `JANASEVA_INGESTION_DATABASE_URL` before relying on unattended discovery. The current Render workspace has no dedicated JANASEVA cron service. Details and evidence are in [the expansion report](docs/government-records.md).
 
 Queue uniqueness, source leases, heartbeats, and expired-lease recovery prevent overlap/recover interrupted work. Queue interruptions retry up to three attempts; source/generation failures retain separate retry state. A completed request may contain failed sources: inspect both request state and per-source results in `/admin/discovery`.
 
@@ -430,6 +439,7 @@ npm run lint
 npm test
 npm run build
 npm run test:auth-ui
+npm run test:records-ui
 ```
 
 Backend tests cover pending accounts, expired/single-use tokens, reset revocation, role injection, default-admin exemption, invitations, ownership, saves, queue concurrency/recovery, revisions, deduplication, outages, screening, and approval-based browser execution.
@@ -438,7 +448,7 @@ Backend tests cover pending accounts, expired/single-use tokens, reset revocatio
 
 `npm run test:ui` runs the broader smoke script; see [testing instructions](docs/testing-guide.md) for service prerequisites. Tests use temporary databases and controlled source/AI fixtures. They do not prove live portal availability, deployed inbox delivery, or an enabled external scheduler.
 
-Latest recorded implementation checks passed 14 backend tests, frontend type checking, lint, the frontend production build, and the auth browser smoke flow. This is historical verification, not a claim that checks execute when this document is read.
+The government-information increment adds an official-fixture integration test to the existing suite (16 backend tests) and a records browser smoke test. The checks use real captured official text with controlled model responses; they do not establish live model credentials or successful production scheduling. See [the verification report](docs/government-records.md) for results and remaining deployment checks.
 
 ## Troubleshooting
 
@@ -478,6 +488,7 @@ Current boundaries:
 
 - [Architecture and retained workflow](docs/architecture.md)
 - [Official sources, evidence, publishing](docs/government-schemes.md)
+- [Shared government records, autofill, security and verified examples](docs/government-records.md)
 - [Role dashboards and scheduler activation](docs/role-dashboards.md)
 - [Authentication, Brevo/SMTP, recovery](docs/email-auth.md)
 - [Hosted setup](docs/setup-guide.md)

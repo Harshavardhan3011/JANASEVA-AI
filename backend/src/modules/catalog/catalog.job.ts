@@ -63,7 +63,7 @@ export async function runCatalogSync(trigger='scheduled',autoPublish=true,reques
           const announceOnly=source.kind==='pib_rss' && !/^(?:launch(?: of|es|ed)?|new scheme|scheme guidelines)|(?:नई योजना का शुभारंभ|योजना के दिशा-निर्देश)/iu.test(candidate.title);
           const document=await readDocument(read,candidate.url,candidate.title);
           const metadata=search ? searchMetadata(document,candidate.url) : metadataSchema.parse({
-            ...defaults,title:candidate.title,
+            ...defaults,title:source.kind==='document'?String(defaults.title || candidate.title || document.originalTitle):document.originalTitle || candidate.title,
             reviewNote:announceOnly ? 'This press release may report activity about a scheme rather than define a new scheme.' : defaults.reviewNote,
           });
           if (!metadata) {

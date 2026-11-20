@@ -25,7 +25,7 @@ export async function discoverListing(read:OfficialReader,url:string) {
  const links:Array<{url:string;title:string}>=[];
  $('a[href]').each((_,element)=>{
    const title=compact($(element).text());
-   if (!/scheme|yojana|scholarship|pension|subsidy|योजना/i.test(title)) return;
+   if (!/scheme|yojana|scholarship|pension|subsidy|certificate|licen[cs]e|recruitment|exam|result|rules|notification|faq|helpline|hearing|service|योजना|नियम|अदालत/i.test(title)) return;
    const target=officialSourceUrl.safeParse(new URL($(element).attr('href')!,page.url).href);
    if (target.success && target.data!==page.url) links.push({title:title.slice(0,255),url:target.data});
  });

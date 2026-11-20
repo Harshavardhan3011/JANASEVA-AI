@@ -5,6 +5,8 @@ import { AppError } from '../../shared/errors';
 import { describeScheme } from './catalog.ai';
 import { canonicalSource, compact, verifyDescription } from './catalog.types';
 import type { ImportMetadata, SchemeDescription, SourceDocument } from './catalog.types';
+import { sourcePreview } from './record.extract';
+import { inferredType } from './record.schema';
 
 interface ImportRow {
   id:string; scheme_id:string|null; current_version:string|null; published_version:string|null;
@@ -17,6 +19,7 @@ export interface Version {
   requires_admin_review?:boolean;
   review_disposition?:'pending'|'approved'|'rejected';
   error:string|null; generation_attempts:number; retry_at:Date|string|null;
+  reviewed_by?:string|null;human_edited?:boolean;
 }
 
 async function lockImport(db:Database,id:string) {
@@ -26,11 +29,13 @@ async function lockImport(db:Database,id:string) {
 }
 
 export async function captureDocument(meta:ImportMetadata,document:SourceDocument,actor:string|null=null) {
-  const canonical=canonicalSource(document.url);
+  const canonical=canonicalSource(document.identityUrl || document.url);
   const authority=new URL(canonical).hostname.replace(/^www\./,'');
   const legacyKey=meta.officialId ? authority+':'+meta.officialId.toUpperCase() : null;
   const key=meta.officialId && meta.state ? authority+':'+meta.state.toUpperCase()+':'+meta.officialId.toUpperCase() : legacyKey;
-  const metadata={ ...meta,applyUrl:document.applyUrl,incomplete:document.incomplete };
+  const metadata={ ...meta,publicationDate:document.publicationDate ?? meta.publicationDate,
+    sourceId:document.sourceId || meta.sourceId,originalLanguage:document.originalLanguage || meta.originalLanguage,
+    extraction:document.extraction,applyUrl:document.applyUrl,incomplete:document.incomplete };
   const hash=createHash('sha256').update(JSON.stringify([
     compact(document.text),document.originalTitle,document.applyUrl,document.incomplete,
   ])).digest('hex');
@@ -46,11 +51,12 @@ export async function captureDocument(meta:ImportMetadata,document:SourceDocumen
     await db.query('update public.scheme_catalog_imports set last_fetched_at=now(), official_key=coalesce(official_key,$2) where id=$1',[entry.id,key]);
     const { rows:[previous] }=entry.current_version ? await db.query<Version>(
       'select * from public.scheme_catalog_versions where id=$1',[entry.current_version]) : {rows:[]};
-    if (previous?.fingerprint===hash) return { kind:'skipped' as const, version:previous };
+    const needsClassification=previous?.status==='published' && !previous.description?.record && inferredType(previous.original_title)!=='scheme';
+    if (previous?.fingerprint===hash && !needsClassification) return { kind:'skipped' as const, version:previous };
     const { rows:[version] }=await db.query<Version>(`
       insert into public.scheme_catalog_versions(import_id,original_title,source_url,source_text,fingerprint,metadata,requires_admin_review)
       values($1,$2,$3,$4,$5,$6,$7) returning *
-    `,[entry.id,document.originalTitle,document.url,document.text,hash,JSON.stringify(metadata),Boolean(actor)]);
+    `,[entry.id,document.originalTitle,document.url,document.text,hash,JSON.stringify(metadata),Boolean(actor) || Boolean(previous?.reviewed_by) || Boolean(previous?.requires_admin_review)]);
     await db.query('update public.scheme_catalog_imports set current_version=$2 where id=$1',[entry.id,version.id]);
     await audit(db,actor,previous?'scheme.source.changed':'scheme.source.added','version',version.id,'Captured official source evidence.');
     return { kind:previous ? 'changed' as const : 'added' as const,version };
@@ -61,6 +67,10 @@ export async function generateVersion(id:string,force=false) {
   const db=await database();
   const { rows:[original] }=await db.query<Version>('select * from public.scheme_catalog_versions where id=$1',[id]);
   if (!original) throw AppError.notFound('Draft not found.');
+  if (original.human_edited) {
+    if (force) throw AppError.conflict('Manual edits are preserved. Refresh the official source to create a separate proposed revision instead of replacing this draft.');
+    return original;
+  }
   if (original.review_disposition==='rejected' || original.status==='published' || (!force && original.description && original.status==='draft')) return original;
   const token=randomUUID();
   const { rows:[current] }=await db.query<Version>(`
@@ -72,9 +82,10 @@ export async function generateVersion(id:string,force=false) {
     returning v.*
   `,[id,token,force]);
   if (!current) return original;
+  let proposal:SchemeDescription|undefined;
   try {
-    if (!current.source_text.trim()) throw new Error('The document has no readable source text. Upload a text-based official PDF.');
-    const description=await describeScheme(current.metadata,current.source_text);
+    if (!current.source_text.trim()) throw new Error(current.metadata.extraction?.error || 'The document has no readable source text. Upload a text-based official PDF.');
+    const description=await describeScheme(current.metadata,current.source_text);proposal=description;
     const errors=verifyDescription(description,current.source_text).problems;
     if (errors.length) throw new Error(errors.join(' '));
     const { rows:[saved] }=await db.query<Version>(`
@@ -87,10 +98,10 @@ export async function generateVersion(id:string,force=false) {
     const message=error instanceof Error ? error.message.slice(0,420) : 'AI description generation failed.';
     const minutes=Math.min(360,15*2**Math.min(current.generation_attempts-1,5));
     const { rows:[failed] }=await db.query<Version>(`
-      update public.scheme_catalog_versions set status='generation_failed',error=$3,
+      update public.scheme_catalog_versions set status='generation_failed',error=$3,description=coalesce(description,$5::jsonb),
         generation_lease_until=null,generation_token=null,retry_at=now()+interval '1 minute' * $4::integer
       where id=$1 and generation_token=$2 returning *
-    `,[id,token,message,minutes]);
+    `,[id,token,message,minutes,current.source_text.trim()?JSON.stringify(proposal || sourcePreview(current.metadata,current.source_text)):null]);
     return failed || original;
   }
 }
@@ -100,7 +111,8 @@ export async function editDraft(id:string,description:SchemeDescription,actor:st
     const version=await currentDraft(db,id);
     const validation=verifyDescription(description,version.source_text);
     if (validation.problems.length) throw AppError.badRequest(validation.problems.join(' '));
-    await db.query(`update public.scheme_catalog_versions set description=$2,status='draft',error=null,review_disposition='pending',requires_admin_review=true
+    await db.query(`update public.scheme_catalog_versions set description=$2,status='draft',error=null,review_disposition='pending',requires_admin_review=true,
+      generation_token=null,generation_lease_until=null,human_edited=true
       where id=$1`,[id,JSON.stringify(description)]);
     await audit(db,actor,'scheme.draft.edited','version',id,'Edited draft against official evidence.');
   });
@@ -129,7 +141,17 @@ export async function publishVersion(id:string,actor:string|null,reason='Verifie
     const validation=verifyDescription(draft,version.source_text);
     if (validation.problems.length) throw AppError.badRequest(validation.problems.join(' '));
     if (!actor && (version.requires_admin_review || draft.reviewIssues.length || version.metadata.incomplete ||
-      /list of schemes|older amounts|rather than define|uploaded PDF/i.test(version.metadata.reviewNote || ''))) return null;
+      /list of schemes|older amounts|uploaded PDF/i.test(version.metadata.reviewNote || ''))) return null;
+    if (!actor && draft.record) {
+      const record=draft.record;
+      if (!record.typeEvidence || !record.authority) return null;
+      if (record.type==='scheme' && (!draft.benefits.length || !(draft.eligibility.length || draft.whoCanApply.length))) return null;
+      if (record.type==='event' && !record.dates.some(date=>date.kind==='event' && date.value)) return null;
+      if (record.type==='public_notice' && !record.dates.some(date=>['hearing','registration_deadline','event'].includes(date.kind) && date.value)) return null;
+      if (record.type==='citizen_service' && (!draft.documents.length || !record.facts.applicationChannels.length)) return null;
+      if (record.type==='recruitment' && (!record.facts.posts.length || !record.facts.qualifications.length)) return null;
+      if (record.type==='regulatory_guide' && !record.facts.referenceNumber.length) return null;
+    }
 
     let schemeId=entry.scheme_id;
     if (!schemeId) {
@@ -153,13 +175,16 @@ export async function publishVersion(id:string,actor:string|null,reason='Verifie
       )) return null;
     }
     const meta=version.metadata;
+    const record=draft.record;
+    const applicationAllowed=!record || ['scheme','citizen_service','recruitment','exam'].includes(record.type);
+    const publicApplyUrl=applicationAllowed?meta.applyUrl:null;
     if (!schemeId) {
       const { rows:[created] }=await db.query<{id:string}>(`
         insert into public.schemes(scheme_name,description,department,official_url,catalog_source_url,coverage_state,category,
           application_url,last_verified_at,catalog_checked_on)
         values($1,$2,$3,$4,$4,$5,$6,$7,now(),(now() at time zone 'Asia/Kolkata')::date)
         returning id
-      `,[meta.title,draft.overview[0].text,meta.issuer,version.source_url,meta.state||null,meta.category,meta.applyUrl]);
+      `,[record?.title?.text || meta.title,draft.overview[0].text,record?.authority?.text || meta.issuer,version.source_url,record?.jurisdiction.state || meta.state||null,meta.category,publicApplyUrl]);
       schemeId=created.id;
     }
     await db.query(`update public.scheme_catalog_imports set scheme_id=$2,published_version=$3 where id=$1`,

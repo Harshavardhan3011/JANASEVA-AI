@@ -18,7 +18,7 @@ export async function chat(req: Request, res: Response) {
   const {rows:[prior]}=input.conversation_id ? await db.query('select turns from public.conversations where id=$1 and user_id=$2',[input.conversation_id,userId]) : {rows:[]};
   const turns=prior?.turns || [];
   const previousIds=(turns[turns.length-1]?.matches || []).map((item:{id:string})=>item.id);
-  const response = {conversation_id:input.conversation_id ?? randomUUID(),...await answerQuestion(input.message,previousIds)};
+  const response = {conversation_id:input.conversation_id ?? randomUUID(),...await answerQuestion(input.message,previousIds,userId)};
   await db.query(`insert into public.conversations(id,user_id,turns) values($1,$2,$3)
       on conflict (id) do update set turns=conversations.turns || excluded.turns, updated_at=now()
       where conversations.user_id=excluded.user_id`, [

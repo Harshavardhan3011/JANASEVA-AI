@@ -1,8 +1,10 @@
 import { z } from 'zod';
 import { schemeSections } from './schemeDetails';
 import type { Description } from './schemeDetails';
+import { factLabels } from './governmentRecords';
 
 export function draftFieldLabel(path: Array<string | number>) {
+  if (path[0]==='record') return path.slice(1).map(value=>typeof value==='number'?'item '+(value+1):factLabels[value as keyof typeof factLabels] || String(value)).join(' · ');
   const [section,index,field]=path;
   const label=schemeSections.find(([key])=>key===section)?.[1] ||
     (section==='statusEvidence'?'Application status evidence':String(section || 'Description'));
@@ -34,6 +36,19 @@ export function prepareDraft(draft:Description):Description {
     if (!result.success) errors.push('Application status evidence: enter public wording (at least 3 characters) and an exact official passage (at least 5 characters), or choose Not specified.');
     else cleaned.statusEvidence=result.data;
   } else cleaned.statusEvidence=null;
+  if (draft.record) {
+    const record=structuredClone(draft.record);
+    for (const key of Object.keys(factLabels) as Array<keyof typeof factLabels>) {
+      const rows=record.facts[key] || [];
+      record.facts[key]=rows.filter(row=>row.text.trim() || row.quote.trim());
+      rows.forEach((row,index)=>{if(!row.text.trim() && !row.quote.trim())return;
+        const result=claim.safeParse(row);if(!result.success)errors.push(draftFieldLabel(['record','facts',key,index])+': complete public wording and an exact quotation.');});
+    }
+    record.dates=record.dates.filter(row=>row.text.trim() || row.quote.trim() || row.value || row.time);
+    record.dates.forEach((row,index)=>{if(!claim.safeParse(row).success)errors.push('Structured date item '+(index+1)+': provide wording and a supporting quotation.');});
+    record.related=record.related.filter(row=>row.title.trim() || row.quote.trim() || row.url);
+    cleaned.record=record;
+  }
   if (errors.length) throw new Error(errors.join('\n'));
   return cleaned;
 }

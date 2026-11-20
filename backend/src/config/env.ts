@@ -10,6 +10,7 @@ export const env = z.object({
   PORT: z.coerce.number().default(3001),
   FRONTEND_URL: z.url().default('http://localhost:5173'),
   DATABASE_URL: z.string().default(''),
+  INGESTION_DATABASE_URL:z.string().default(''),
   DATA_DIR: z.string().default(path.join(root, '.data')),
   SUPABASE_URL: z.string().default(''),
   SUPABASE_SERVICE_ROLE_KEY: z.string().default(''),
@@ -51,8 +52,8 @@ export const env = z.object({
   BROWSER_TIMEOUT: z.coerce.number().int().min(3000).max(60000).default(15000),
   OCR_LANG_PATH: z.string().default(''),
 }).superRefine((config, ctx) => {
-  if (config.SCHEME_SYNC_WORKER && !config.DATABASE_URL) {
-    ctx.addIssue({code:'custom',message:'The standalone scheduler requires DATABASE_URL.'});
+  if (config.SCHEME_SYNC_WORKER && !config.DATABASE_URL && !config.INGESTION_DATABASE_URL) {
+    ctx.addIssue({code:'custom',message:'The standalone scheduler requires DATABASE_URL or INGESTION_DATABASE_URL.'});
   }
   if (config.NODE_ENV === 'production' && !config.SCHEME_SYNC_WORKER &&
       (!config.DATABASE_URL || !config.SUPABASE_URL || !config.SUPABASE_SERVICE_ROLE_KEY ||

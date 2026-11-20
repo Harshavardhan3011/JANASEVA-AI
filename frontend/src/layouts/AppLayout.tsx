@@ -31,7 +31,7 @@ export const AppLayout: React.FC = () => {
   ];
 
   return (
-    <div className="h-dvh overflow-hidden bg-slate-50 flex flex-col md:flex-row">
+    <div className="h-dvh overflow-hidden bg-slate-50 flex flex-col md:flex-row" onKeyDown={event=>{if(event.key==='Escape')setMobileMenuOpen(false);}}>
       {/* Mobile Header */}
       <div className="md:hidden shrink-0 bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center space-x-2">
@@ -41,7 +41,7 @@ export const AppLayout: React.FC = () => {
           <span className="font-bold text-slate-900 text-lg">JANASEVA AI</span>
         </div>
         <button
-          aria-label="Toggle navigation" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          aria-label="Toggle navigation" aria-controls="workspace-navigation" aria-expanded={mobileMenuOpen} onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="p-1 rounded-md text-slate-600 hover:text-slate-900 hover:bg-slate-100"
         >
           {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -50,8 +50,9 @@ export const AppLayout: React.FC = () => {
 
       {/* Sidebar for Desktop */}
       <aside
+        id="workspace-navigation"
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 transform md:translate-x-0 transition-transform duration-200 ease-in-out flex flex-col ${
-          mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:relative'
+          mobileMenuOpen ? 'translate-x-0 visible' : '-translate-x-full invisible md:visible md:relative'
         }`}
       >
         {/* Brand */}

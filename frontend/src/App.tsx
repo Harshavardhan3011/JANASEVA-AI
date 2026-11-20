@@ -29,6 +29,7 @@ import { ApplicationsListPage } from './pages/ApplicationsListPage';
 import { ApplicationReviewPage } from './pages/ApplicationReviewPage';
 import { BrowserMonitorPage } from './pages/BrowserMonitorPage';
 import { TrackingPage } from './pages/TrackingPage';
+import { CitizenDraftsPage } from './pages/CitizenDraftsPage';
 
 function LegacyAsk() {const location=useLocation();return <Navigate to={'/ask'+location.search+location.hash} replace/>;}
 
@@ -61,6 +62,8 @@ export const App: React.FC = () => {
             <Route path="checklists" element={<DashboardPage key="checklists" view="checklists"/>}/>
             <Route path="profile" element={<DashboardPage key="profile" view="profile"/>}/>
             <Route path="notices" element={<SchemeMonitorPage/>}/>
+            <Route path="drafts" element={<CitizenDraftsPage/>}/>
+            <Route path="drafts/:id" element={<CitizenDraftsPage/>}/>
           </Route>
           <Route path="/my-schemes" element={<Suspense fallback={<p role="status">Loading your schemes…</p>}><MySchemesPage /></Suspense>} />
           <Route path="/schemes/monitor" element={<Navigate to={user?.is_admin?'/admin/review/notices':'/dashboard/notices'} replace/>}/>

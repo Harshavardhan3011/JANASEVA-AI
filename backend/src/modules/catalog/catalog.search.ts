@@ -9,7 +9,9 @@ const tavilyUrl='https://api.tavily.com/search';
 const searchResults=z.array(z.object({url:z.string()})).max(20);
 const braveResponse=z.object({web:z.object({results:searchResults}).optional()});
 const tavilyResponse=z.object({results:searchResults});
-const topics=['scheme eligibility benefits application', 'yojana guidelines application subsidy', 'pension grant welfare scheme eligibility'];
+const topics=['scheme eligibility benefits application', 'yojana guidelines application subsidy', 'pension grant welfare scheme eligibility',
+  'citizen service certificate licence documents fee application', 'recruitment examination result official notification',
+  'government public notice hearing consultation deadline', 'rules Gazette circular FAQ official helpline grievance RTI'];
 const scopeSchema=z.object({cursor:z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).default(0)});
 
 export const hasSearchKey=()=>Boolean(env.TAVILY_API_KEY || env.SCHEME_SEARCH_API_KEY);
@@ -74,7 +76,7 @@ export function searchMetadata(document:SourceDocument, candidateUrl:string) {
     throw new Error('The discovered document redirected to a different publisher.');
   }
   const lines=document.text.split(/\r?\n/).map(compact).filter(Boolean);
-  const schemeTitle=/\b(?:schemes?|yojana|pension|scholarship|subsidy|fellowship)\b|योजना|छात्रवृत्ति|पेंशन/iu;
+  const schemeTitle=/\b(?:schemes?|yojana|pension|scholarship|subsidy|fellowship|certificate|licen[cs]e|recruitment|vacanc|exam|result|rules|notification|circular|faq|helpline|directory|hearing|adalat|meeting|service|consultation)\b|योजना|छात्रवृत्ति|पेंशन|नियम|अदालत|बैठक/iu;
   const heading=compact(document.originalTitle);
   const title=schemeTitle.test(heading) && compact(document.text).includes(heading)
     ? heading

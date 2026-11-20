@@ -11,9 +11,10 @@ export interface Database {
 type Storage = Database & { close():Promise<void>; transaction<T>(work: (tx: Database) => Promise<T>): Promise<T> };
 
 async function connect(): Promise<Storage> {
-  if (env.DATABASE_URL) {
-    const pool = new pg.Pool({ connectionString: env.DATABASE_URL, max: 5, options: '-c search_path=public,extensions', connectionTimeoutMillis: 10000 });
-    await pool.query('select 1 from public.citizen_sessions limit 1');
+  if (env.DATABASE_URL || (env.SCHEME_SYNC_WORKER && env.INGESTION_DATABASE_URL)) {
+    const pool = new pg.Pool({ connectionString: (env.SCHEME_SYNC_WORKER?env.INGESTION_DATABASE_URL:'') || env.DATABASE_URL, max: 5,
+      options: '-c search_path=public,extensions'+(env.SCHEME_SYNC_WORKER?' -c role=janaseva_ingestor':''), connectionTimeoutMillis: 10000 });
+    await pool.query(env.SCHEME_SYNC_WORKER?'select 1 from public.scheme_catalog_sources limit 1':'select 1 from public.citizen_sessions limit 1');
     return {
       query: (sql, params) => pool.query(sql, params),
       close: () => pool.end(),
@@ -39,6 +40,8 @@ async function connect(): Promise<Storage> {
     'migrations/001_initial_schema.sql', 'migrations/003_workflow_integrity.sql', 'migrations/004_scheme_catalog.sql',
     'migrations/005_scheme_monitor.sql', 'migrations/006_scheme_publications.sql',
     'migrations/007_scheme_search.sql', 'migrations/008_citizen_scheme_alerts.sql', 'migrations/009_scheme_finder.sql', 'migrations/010_admin_sessions.sql', 'migrations/011_email_auth.sql', 'migrations/012_role_dashboards.sql',
+    'migrations/20261120134249_government_records.sql',
+    'migrations/20261120142343_ingestion_maintenance.sql',
     'seed/001_seed_schemes.sql', 'seed/002_seed_nsp_catalog.sql',
   ]) {
     await local.exec(await readFile(join(root, 'database', file), 'utf8'));

@@ -6,7 +6,7 @@ import { errorMessage } from '../services/workflow';
 import { SchemeCard } from '../components/SchemeCard';
 import type { SchemeCardData } from '../components/SchemeCard';
 interface Turn {message:string;reply:string;matches?:SchemeCardData[];follow_up?:string|null;conversation_id:string;recheck_requested?:boolean}
-const examples=['Find scholarships for a third-year mechanical engineering student in Andhra Pradesh.','Find agriculture schemes.','What documents do I need for PM-USP CSSS?'];
+const examples=['Find scholarships for a third-year mechanical engineering student in Andhra Pradesh.','What documents do I need for an income certificate in Andhra Pradesh?','When is the Delhi Pension Adalat registration deadline?'];
 export const AssistantPage=()=>{
  const {user}=useAuth();
  const [params]=useSearchParams();
@@ -41,7 +41,7 @@ export const AssistantPage=()=>{
    catch(err) {setError(errorMessage(err));}
  }
  return <div className="workflow">
-   <header className="workflow-heading"><div><h1>Ask JANASEVA AI</h1><p>Find schemes and check requirements against official sources.</p></div>
+   <header className="workflow-heading"><div><h1>Ask JANASEVA AI</h1><p>A direct answer, your next action, and the official source. Ask about schemes, services or notices.</p></div>
      {user && <select aria-label="Conversation history" disabled={busy} value={conversation} onChange={event=>void open(event.target.value)}>
        <option value="">New conversation</option>{conversations.map(item=><option key={item.id} value={item.id}>{item.title.slice(0,60)}</option>)}
      </select>}

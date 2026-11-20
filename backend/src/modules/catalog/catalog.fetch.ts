@@ -4,6 +4,7 @@ import robotsParser from 'robots-parser';
 import pdf from 'pdf-parse/lib/pdf-parse.js';
 import { compact, officialSourceUrl } from './catalog.types';
 import type { SourceDocument } from './catalog.types';
+import { officialDate } from './record.schema';
 
 const agent='JANASEVA-AI';
 const fetchHeaders={'User-Agent':agent+'/1.0'};
@@ -94,27 +95,48 @@ export type OfficialReader=ReturnType<typeof createOfficialReader>;
 
 export async function extractPdf(bytes:Buffer, url:string, title:string):Promise<SourceDocument> {
   if (bytes.subarray(0,5).toString()!=='%PDF-') throw new Error('The source did not return a PDF.');
-  const doc=await pdf(bytes,{max:60});
+  let doc;
+  try {doc=await pdf(bytes,{max:300});} catch {throw new Error('PDF extraction failed. The file may be encrypted, damaged, or unsupported. Upload an accessible official PDF.');}
   const text=doc.text.trim();
+  if (text.length<30) throw new Error('This PDF has no readable text layer. Scanned PDFs need OCR; upload a text-based official version.');
   const info=doc.info as {Title?:string}|undefined;
   const originalTitle=compact(info?.Title || title).slice(0,255);
-  return { url, originalTitle, text:text.slice(0,textLimit), applyUrl:null,
-    incomplete:text.length<150 || text.length>textLimit || doc.numpages>60 };
+  const applicationMatch=compact(text).match(/Form Submission\s+(https:\/\/[^\s]+)/i);
+  const application=applicationMatch?officialSourceUrl.safeParse(applicationMatch[1]):null;
+  // Retain both ends of long bilingual documents so an English part after a Hindi part is not silently lost.
+  const english=text.search(/MINISTRY OF LABOUR AND EMPLOYMENT|MINISTRY OF [A-Z ]{4,80}\n/);
+  const selected=text.length>textLimit?
+    (english>textLimit/2?text.slice(0,6000)+'\n[English section excerpt]\n'+text.slice(english,english+42000)+'\n[Final document excerpt]\n'+text.slice(-6000):text.slice(0,textLimit/2)+'\n[Document excerpt truncated; inspect the complete official PDF.]\n'+text.slice(-textLimit/2)):text;
+  return { url, originalTitle, text:selected, applyUrl:application?.success?application.data:null,
+    extraction:{method:'pdf',pages:doc.numpages,characters:text.length,truncated:text.length>textLimit || doc.numpages>300},
+    incomplete:text.length<150 || text.length>textLimit || doc.numpages>300 };
 }
 
 export async function readDocument(read:OfficialReader,url:string,title:string):Promise<SourceDocument> {
   const { bytes,url:resolved,mime }=await read(url);
   if (bytes.subarray(0,5).toString()==='%PDF-') {
     try { return await extractPdf(bytes,resolved,title); }
-    catch { return {url:resolved,originalTitle:title,text:'',applyUrl:null,incomplete:true}; }
+    catch(error) { return {url:resolved,originalTitle:title,text:'',applyUrl:null,incomplete:true,
+      extraction:{method:'pdf',characters:0,truncated:false,error:error instanceof Error?error.message:'PDF extraction failed.'}}; }
   }
   if (!/html/i.test(mime)) return {url:resolved,originalTitle:title,text:'',applyUrl:null,incomplete:true};
   const $=load(bytes.toString('utf8'));
+  const publicationText=compact($('.ReleaseDateSubHeaddateTime, .ReleaseDateSubHead, time').first().text()) ||
+    (compact($('body').text()).match(/Posted On:\s*\d{1,2}\s+[A-Z]+\s+20\d{2}[^\n]{0,25}/i)?.[0] || '');
+  const publicationDate=officialDate(publicationText);
+  const language=$('html').attr('lang') || (/^[\s\S]*[\u0900-\u097f]/.test(title)?'hi':'und');
+  const publisher=compact($('.ReleaseMinistry').first().text());
+  let identityUrl:string|undefined;
+  if (/(^|\.)pib.gov.in$/.test(new URL(resolved).hostname)) {
+    $('a[href]').each((_,link)=>{if (/^english$/i.test(compact($(link).text()))) {
+      try {const candidate=new URL($(link).attr('href')!,resolved);if (/^(www\.)?pib.gov.in$/.test(candidate.hostname) && candidate.searchParams.has('PRID')) identityUrl=candidate.href;} catch { /* Ignore malformed translation links. */ }
+    }});
+  }
   $('script,style,nav,footer,header,noscript').remove();
   const body=$('.innner-page-main-about-us-content-right-part, article, main, #main-content, #mainContent').first();
   const area=body.length ? body : $('body');
   const lines=area.find('h1,h2,h3,h4,p,li,tr').toArray().map(node=>compact($(node).text())).filter(Boolean);
-  const text=[...new Set(lines)].join('\n');
+  const text=[...new Set([publisher,publicationText,...lines].filter(Boolean))].join('\n');
   const heading=compact(area.find('h1,h2').first().text() || $('title').text() || title).slice(0,255);
   let applyUrl:null|string=null;
   area.find('a[href]').each((_,link)=>{
@@ -125,7 +147,9 @@ export async function readDocument(read:OfficialReader,url:string,title:string):
       if (!applyUrl) applyUrl=linkUrl;
     } catch { /* The public link must be on the reviewed allowlist. */ }
   });
-  return { url:resolved, originalTitle:heading || title, text:text.slice(0,textLimit), applyUrl,
+  return { url:resolved, originalTitle:heading || title, text:text.slice(0,textLimit), applyUrl,publicationDate,
+    sourceId:new URL(identityUrl || resolved).searchParams.get('PRID') || undefined,originalLanguage:/[\u0900-\u097f]/u.test(heading)?'hi':language,identityUrl,
+    extraction:{method:'html',characters:text.length,truncated:text.length>textLimit},
     incomplete:!body.length || text.length<150 || text.length>textLimit };
 }
 
@@ -139,7 +163,7 @@ export async function discoverPib(read:OfficialReader,url:string) {
     const title=compact(item.find('title').first().text()).slice(0,255);
     const link=officialSourceUrl.safeParse(item.find('link').first().text().trim());
     if (!title || !link.success || !['pib.gov.in','www.pib.gov.in'].includes(new URL(link.data).hostname)) return;
-    if (/योजना|छात्रवृत्ति|पेंशन|सब्सिडी|कल्याण|\b(?:scheme|scholarship|pension|yojana|subsidy|fellowship)\b/iu.test(title)) {
+    if (/योजना|छात्रवृत्ति|पेंशन|सब्सिडी|कल्याण|बैठक|अदालत|नियम|\b(?:scheme|scholarship|pension|yojana|subsidy|fellowship|meeting|hearing|adalat|certificate|recruitment|rules|notification|consultation|faq|helpline|service)\b/iu.test(title)) {
       result.push({title,url:link.data});
     }
   });

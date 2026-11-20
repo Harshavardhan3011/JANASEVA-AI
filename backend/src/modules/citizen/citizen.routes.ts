@@ -7,6 +7,7 @@ import { AppError } from '../../shared/errors';
 import { findSchemes, verifiedDeadline } from '../schemes/scheme.finder';
 import { schemes } from '../schemes/schemes.controller';
 import type { SchemeDescription } from '../catalog/catalog.types';
+import draftRoutes from './citizen.drafts';
 
 const router=Router();
 router.use(authMiddleware);
@@ -16,6 +17,7 @@ router.use((req,_res,next)=>{
   next();
 });
 router.use((_req,res,next)=>{res.set('Cache-Control','no-store');next();});
+router.use('/drafts',draftRoutes);
 const answer=z.enum(['met','unmet','unknown']);
 const assessment=z.object({versionId:z.uuid(),answers:z.record(z.string(),answer)}).strict();
 

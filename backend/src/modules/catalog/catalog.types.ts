@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { publisherForHost } from './catalog.publishers';
-import { categories } from '../monitor/monitor.types';
+import { recordSchema,officialDate } from './record.schema';
 
 export const unknownDetail='Not specified in the official source.';
 export const sections=['overview','whoCanApply','benefits','eligibility','exclusions','documents','applicationSteps','dates','contacts'] as const;
@@ -18,12 +18,14 @@ export const descriptionSchema=z.object({
   status:z.enum(['unknown','announced','open','closed','rolling']),
   statusEvidence:claimSchema.nullable(),
   reviewIssues:z.array(z.string().trim().min(1).max(350)).max(12),
+  record:recordSchema.optional(),
 }).strict();
 export type SchemeDescription=z.infer<typeof descriptionSchema>;
 
 export const supportedHosts=new Set([
   'pib.gov.in','www.pib.gov.in','sspensions.ap.gov.in','pmkisan.gov.in','www.pmkisan.gov.in',
   'gsws-nbm.ap.gov.in','gramawardsachivalayam.ap.gov.in','nandyal.ap.gov.in',
+  'apseva.ap.gov.in','vswsonline.ap.gov.in',
 ]);
 export const officialSourceUrl=z.url({protocol:/^https$/}).refine(value=>{
   const url=new URL(value);
@@ -34,17 +36,22 @@ export const metadataSchema=z.object({
   issuer:z.string().trim().min(2).max(255),
   officialId:z.string().trim().min(1).max(120).optional(),
   state:z.string().trim().max(120).default(''),
-  category:z.enum(categories).default('Other'),
+  category:z.string().trim().min(2).max(100).default('Other'),
   reviewNote:z.string().trim().max(600).optional(),
   aliases:z.preprocess(value=>typeof value==='string'?value.split(',').map(item=>item.trim()).filter(Boolean):value,z.array(z.string().trim().min(2).max(120)).max(12).optional()),
   district:z.string().trim().max(120).optional(),
-  coverageLevel:z.enum(['National','State','District','Village']).optional(),
+  coverageLevel:z.enum(['National','State','Union Territory','District','Village','Local']).optional(),
   applicationPortalSource:z.boolean().optional(),
   discovery:z.literal('official_search').optional(),
+  publicationDate:z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+  sourceId:z.string().max(160).optional(),originalLanguage:z.string().max(40).optional(),
+  extraction:z.object({method:z.enum(['html','pdf']),pages:z.number().optional(),characters:z.number(),truncated:z.boolean(),error:z.string().optional()}).optional(),
 });
 export type ImportMetadata=z.infer<typeof metadataSchema>;
 export interface SourceDocument {
   url:string; originalTitle:string; text:string; applyUrl:string|null; incomplete:boolean;
+  publicationDate?:string|null;sourceId?:string;originalLanguage?:string;identityUrl?:string;
+  extraction?:ImportMetadata['extraction'];
 }
 
 export function canonicalSource(input:string) {
@@ -54,7 +61,7 @@ export function canonicalSource(input:string) {
     if (/^(utm_|fbclid|gclid)/i.test(key)) url.searchParams.delete(key);
   }
   if (/^(www\.)?pib\.gov\.in$/.test(url.hostname) && url.searchParams.has('PRID') &&
-    /PressRelease(?:Iframe)?Page\.aspx$/i.test(url.pathname)) {
+    /(?:PressRelease(?:Iframe)?Page|PressRel(?:e|ea)seDetailm?|PressReleaseDetail)\.aspx$/i.test(url.pathname)) {
     return 'https://www.pib.gov.in/PressReleasePage.aspx?PRID='+encodeURIComponent(url.searchParams.get('PRID')!);
   }
   url.searchParams.sort();
@@ -69,6 +76,19 @@ export function verifyDescription(description:SchemeDescription,sourceText:strin
   const problems:string[]=[];
   const claims=sections.flatMap(key=>description[key] || []);
   if (description.statusEvidence) claims.push(description.statusEvidence);
+  if (description.record) {
+    const record=description.record;
+    claims.push(...Object.values(record.facts).flat(),...record.dates,...[record.typeEvidence,record.title,record.authority,record.jurisdiction.evidence].filter((value):value is {text:string;quote:string}=>Boolean(value)));
+    for (const relation of record.related) {
+      if (!source.includes(compact(relation.quote))) problems.push('A related record lacks matching source evidence.');
+      if (relation.url && (!officialSourceUrl.safeParse(relation.url).success || !source.includes(relation.url))) problems.push('A related official URL must be present in the supplied source evidence.');
+    }
+    const publication=record.dates.find(date=>date.kind==='publication')?.value || null;
+    for (const date of record.dates) {
+      if (date.value && officialDate(date.quote,publication)!==date.value) problems.push('A structured date is not supported by its citation and source publication date.');
+      if (date.time && !compact(date.quote).includes(date.time)) problems.push('A structured time is not present in its citation.');
+    }
+  }
   for (const claim of claims) {
     const quote=compact(claim.quote);
     if (!source.includes(quote)) problems.push('A citation does not match the official source text.');

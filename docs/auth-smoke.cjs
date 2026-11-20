@@ -222,6 +222,12 @@ async function main() {
     await page.getByRole('status').filter({hasText:'Draft saved.'}).waitFor();
     assert.equal((await (await database()).query('select description from public.scheme_catalog_versions where id=$1',[editorVersion.id])).rows[0].description.overview[0].quote,quote);
     await page.getByRole('button',{name:'Retry AI generation',exact:true}).click();
+    await page.getByRole('alert').filter({hasText:'Manual edits are preserved'}).waitFor();
+    const {version:retryVersion}=await captureDocument({title:'Retry fixture scheme',issuer:'Fixture department',category:'Other'},
+      {url:'https://www.pib.gov.in/retry-fixture',originalTitle:'Retry fixture scheme',text:quote,applyUrl:null,incomplete:false});
+    await page.goto(frontend+'/admin/schemes?version='+retryVersion.id);
+    await page.getByRole('heading',{name:'Retry fixture scheme',exact:true}).waitFor();
+    await page.getByRole('button',{name:'Retry AI generation',exact:true}).click();
     await page.getByRole('alert').filter({hasText:'LLM_API_KEY is not configured'}).waitFor();
     assert.deepEqual(errors,[]);
     console.log('PASS: desktop/mobile account navigation, pending gate, explicit verification, dashboard, save, reset, preserved saved schemes. Emails captured locally; production delivery unverified.');

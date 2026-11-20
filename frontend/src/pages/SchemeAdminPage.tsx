@@ -7,6 +7,8 @@ import { errorMessage } from '../services/workflow';
 import { dateLabel,emptyDescription,schemeSections } from '../services/schemeDetails';
 import type { Claim,Description,SchemeStatus,Section } from '../services/schemeDetails';
 import { draftFieldLabel,prepareDraft } from '../services/schemeDraft';
+import { RecordEditor } from '../components/RecordEditor';
+import { emptyGovernmentRecord } from '../services/governmentRecords';
 
 const endpoint='/scheme-catalog-admin';
 const categories=['Other','Agriculture','Education','Employment','Finance','Health','Housing','Infrastructure','Social welfare'];
@@ -14,8 +16,8 @@ interface Source {id:string;label:string;url:string;enabled:boolean;interval_min
 interface Run {id:string;source_id:string;trigger_kind:string;started_at:string;finished_at:string|null;added:number;changed:number;skipped:number;failed:number;published:number;error:string|null;outcomes:Array<{url:string;result:string;error?:string}>}
 interface Import {id:string;scheme_id:string|null;version_id:string;original_title:string;status:string;error:string|null;metadata:{title:string}}
 interface Registry {id:string;label:string;url:string;purpose:string;jurisdiction:string;department:string;access_method:string;access_note:string;approved:boolean;last_error:string|null}
-interface Dashboard {sources:Source[];runs:Run[];imports:Import[];registry:Registry[];coverage:Array<{jurisdiction:string;department:string;sources:number;approved:number}>}
-interface Version {id:string;source_url:string;original_title:string;source_text:string;metadata:{title:string;applyUrl:string|null;reviewNote?:string;incomplete:boolean};description:Description|null;published_description:Description|null;error:string|null;status:string;scheme_id:string|null}
+interface Dashboard {sources:Source[];runs:Run[];imports:Import[];registry:Registry[];coverage:Array<{jurisdiction:string;department:string;sources:number;approved:number}>;categories?:string[];actualCoverage?:Array<{jurisdiction:string;authority:string;type:string;published:number}>}
+interface Version {id:string;source_url:string;original_title:string;source_text:string;metadata:{title:string;applyUrl:string|null;reviewNote?:string;incomplete:boolean;extraction?:{method:string;characters:number;pages?:number;truncated:boolean;error?:string}};description:Description|null;published_description:Description|null;error:string|null;status:string;scheme_id:string|null;human_edited?:boolean}
 
 function ClaimInput({ claim,onChange }:{claim:Claim;onChange:(value:Claim)=>void}) {
   return <div className="input-grid">
@@ -109,10 +111,13 @@ export const SchemeAdminPage=({section='editor'}:{section?:'editor'|'sources'})=
         <p>Confirm the access method and publisher terms before approving a source. Feed and API contracts require a dedicated connector.</p>
         <details open={Boolean(registryEdit)||undefined}><summary>{registryEdit?'Edit official source':'Add an official source'}</summary><form key={registryEdit?.id || 'new'} className="grid gap-3 pt-3" onSubmit={event=>{
           event.preventDefault();const values=Object.fromEntries(new FormData(event.currentTarget));
-          void act(async()=>{await api.put(endpoint+'/registry/'+values.id,{...values,approved:values.approved==='on'},config);await loadDashboard();setMessage('Registry saved.');});
+          void act(async()=>{
+            if(values.approved==='on' && (values.access_method==='manual_review' || /^https:\/\/(www\.)?myscheme.gov.in\//.test(String(values.url)))) throw new Error('Save this source unapproved. Manual review cannot enable fetching, and myScheme needs an authorized API connector.');
+            await api.put(endpoint+'/registry/'+values.id,{...values,approved:values.approved==='on'},config);await loadDashboard();setMessage('Registry saved.');});
         }}>
           {['id','label','url','purpose','jurisdiction','department','access_note'].map(field=><label className="grid gap-1" key={field}>{field.replace('_',' ')}<input name={field} defaultValue={String(registryEdit?.[field as keyof Registry] ?? '')} readOnly={field==='id' && Boolean(registryEdit)} required maxLength={field==='access_note'?1000:500}/></label>)}
           <label>Access method<select name="access_method" defaultValue={registryEdit?.access_method || 'manual_review'}><option value="manual_review">Manual review</option><option value="listing">Permitted public listing</option><option value="document">Official document</option><option value="feed">Feed</option><option value="api">API</option></select></label>
+          <p className="text-sm">Keep unapproved for Manual review. Only enable a verified listing/document connector. myScheme API access requires a dedicated authorized integration.</p>
           <label><input name="approved" type="checkbox" defaultChecked={registryEdit?.approved || false}/>I verified permitted automated access for this source.</label>
           <button className="secondary-action" disabled={busy}>Save source</button><button type="button" onClick={()=>setRegistryEdit(undefined)}>Clear form</button>
         </form></details>
@@ -125,6 +130,10 @@ export const SchemeAdminPage=({section='editor'}:{section?:'editor'|'sources'})=
           <div className="max-h-80 overflow-auto"><table className="w-full text-sm"><thead><tr><th>Jurisdiction</th><th>Department</th><th>Sources</th><th>Approved</th></tr></thead>
             <tbody>{dashboard.coverage?.map(row=><tr key={row.jurisdiction+row.department}><td>{row.jurisdiction}</td><td>{row.department}</td><td>{row.sources}</td><td>{row.approved}</td></tr>)}</tbody></table></div>
         </details>
+        <details className="mt-4"><summary>Actual published coverage</summary><p>This reports records currently available, not promised nationwide coverage.</p>
+         {dashboard.actualCoverage?.map((row,index)=><p key={index}>{row.jurisdiction} · {row.authority} · {row.type.replace(/_/g,' ')} · {row.published} records</p>)}
+        </details>
+        <form className="inline-actions mt-4" onSubmit={event=>{event.preventDefault();const name=String(new FormData(event.currentTarget).get('category'));void act(async()=>{await api.post(endpoint+'/categories',{name});await loadDashboard();setMessage('Category added.');});}}><label>New catalogue category<input name="category" minLength={2} maxLength={100} required/></label><button className="secondary-action" disabled={busy}>Add category</button></form>
       </section>
       <section className="workflow-card">
         <div className="section-heading"><div><h2>Sources and sync runs</h2></div>
@@ -169,7 +178,7 @@ export const SchemeAdminPage=({section='editor'}:{section?:'editor'|'sources'})=
             <label>Aliases, separated by commas<input name="aliases" maxLength={1000}/></label>
             <label>Official scheme ID (if provided)<input name="officialId" maxLength={120}/></label>
             <label>State (leave empty for national)<input name="state" maxLength={120}/></label>
-            <label>Category<select name="category">{categories.map(item=><option key={item}>{item}</option>)}</select></label>
+            <label>Category<select name="category">{(dashboard.categories || categories).map(item=><option key={item}>{item}</option>)}</select></label>
             <label>Official PDF (optional)<input name="officialPdf" type="file" accept=".pdf,application/pdf"/></label>
           </div>
           <button className="primary-action" disabled={busy}>Import for review</button>
@@ -190,6 +199,8 @@ export const SchemeAdminPage=({section='editor'}:{section?:'editor'|'sources'})=
         <p><a className="text-teal-800 underline" href={version.source_url} target="_blank" rel="noreferrer">{version.original_title}</a></p>
         {version.metadata.reviewNote ? <p role="note">{version.metadata.reviewNote}</p> : null}
         {version.metadata.incomplete ? <p role="note">Source text may be incomplete.</p> : null}
+        <p className="text-sm">Extraction · {version.metadata.extraction?.method || 'stored text'} · {version.metadata.extraction?.characters ?? version.source_text.length} characters{version.metadata.extraction?.pages?' · '+version.metadata.extraction.pages+' PDF pages':''}{version.metadata.extraction?.truncated?' · Truncated: review full document':''}</p>
+        {version.metadata.extraction?.error && <p role="note">{version.metadata.extraction.error}</p>}
         {version.error ? <p role="note">{version.error}</p> : null}
         {version.status==='generation_failed' ? <p role="note">AI generation did not complete. The official text and any published version are preserved. Retry after fixing the provider issue, or enter supported claims below. This page may describe an announcement rather than a scheme; do not publish it as a scheme unless its evidence supports that.</p> : null}
         {draft.reviewIssues.map(issue=><p key={issue} role="note">{issue}</p>)}
@@ -200,17 +211,21 @@ export const SchemeAdminPage=({section='editor'}:{section?:'editor'|'sources'})=
         {version.published_description && version.status!=='published' ? <details className="mt-3">
           <summary className="cursor-pointer font-semibold">Compare with the published version</summary>
           {schemeSections.filter(([key])=>JSON.stringify(draft[key])!==JSON.stringify(version.published_description?.[key])).map(([key,label])=><div className="py-2" key={key}>
-            <strong>{label}</strong><p>Published: {version.published_description?.[key].map(item=>item.text).join(' ') || 'No details'}</p>
+            <strong>{label}</strong><p>Published: {version.published_description?.[key]?.map(item=>item.text).join(' ') || 'No details'}</p>
             <p>Draft: {draft[key].map(item=>item.text).join(' ') || 'No details'}</p>
           </div>)}
           <p>Application status: {version.published_description.status} → {draft.status}</p>
+          {JSON.stringify(version.published_description.record)!==JSON.stringify(draft.record) && <details><summary>Structured record changes</summary><div className="input-grid"><div><strong>Published</strong><pre className="whitespace-pre-wrap break-words text-xs">{JSON.stringify(version.published_description.record || null,null,2)}</pre></div><div><strong>Proposed</strong><pre className="whitespace-pre-wrap break-words text-xs">{JSON.stringify(draft.record || null,null,2)}</pre></div></div></details>}
         </details> : null}
         {version.status!=='published' ? <button className="secondary-action mt-3" disabled={busy} onClick={()=>void act(async()=>{
           const result=await api.post<{data:Version}>(path+'/retry',{}, {...config,timeout:100000});await open(version.id);await loadDashboard();
           if (result.data.data.status==='generation_failed') setError(result.data.data.error || 'AI generation failed. Your source is preserved; check the provider configuration before retrying.');
           else setMessage('Loaded the latest generation result.');
         })}>Retry AI generation</button> : null}
+        <button className="secondary-action mt-3" disabled={busy} onClick={()=>void act(async()=>{const result=await api.post(endpoint+'/versions/'+version.id+'/refetch',{}, {timeout:100000});await open(result.data.data.version.id);await loadDashboard();setMessage(result.data.data.result==='skipped'?'Source unchanged. Existing edits preserved.':'Fetched a new proposed revision; the published record is preserved.');})}>Refetch official source</button>
         <fieldset disabled={busy || version.status==='published'}>
+          {draft.record && <RecordEditor record={draft.record} onChange={record=>setDraft(current=>({...current,record}))}/>}
+          {!draft.record && <button className="secondary-action mt-3" onClick={()=>setDraft(current=>({...current,record:emptyGovernmentRecord()}))}>Add record type and structured details</button>}
           <p className="mt-3 text-sm">Each item needs public wording (3–1600 characters) and an exact supporting source passage (5–2400 characters). Empty added rows are ignored; complete or remove partially filled rows. Leave missing sections empty.</p>
           {schemeSections.map(([section,label])=><details className="mt-3 rounded-md border border-slate-200 p-3" key={section} open={section==='overview'||error.includes(label+' item')||undefined}>
             <summary className="cursor-pointer font-semibold">{label} ({draft[section].length})</summary>

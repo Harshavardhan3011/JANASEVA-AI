@@ -23,7 +23,7 @@ router.use((_req,res,next)=>{res.set('Cache-Control','no-store');next();});
 
 router.get('/',async (_req,res)=>{
   const db=await database();
-  const [sources,runs,imports,registry]=await Promise.all([
+  const [sources,runs,imports,registry,categories]=await Promise.all([
     db.query(`select id,label,
       case when kind='official_search' then 'https://www.india.gov.in/directory/web-directory/state-uts' else url end as url,
       kind,enabled,interval_minutes,next_check_at,last_checked_at,last_success_at,
@@ -35,16 +35,27 @@ router.get('/',async (_req,res)=>{
       from public.scheme_catalog_imports i join public.scheme_catalog_versions v on v.id=i.current_version
       order by v.fetched_at desc limit 100`),
     db.query('select * from public.scheme_source_registry order by jurisdiction,department,label'),
+    db.query('select name from public.catalog_categories order by name'),
   ]);
-  const jurisdictions=[...new Set(['India',...searchPublishers.map(item=>item.state).filter(Boolean)])];
-  const departments=['Education','Agriculture','Health','Employment','Housing','Social welfare','Industry'];
+  const jurisdictions=[...new Set(['India',...searchPublishers.map(item=>item.state).filter(Boolean),...registry.rows.map(row=>row.jurisdiction)])];
+  const departments=[...new Set(['Education','Agriculture','Health','Employment','Housing','Social welfare','Industry',...registry.rows.map(row=>row.department)])];
   const coverage=jurisdictions.flatMap(jurisdiction=>departments.map(department=>({
     jurisdiction,department,
     sources:registry.rows.filter(row=>row.jurisdiction===jurisdiction && row.department===department).length,
     approved:registry.rows.filter(row=>row.jurisdiction===jurisdiction && row.department===department && row.approved).length,
   })));
-  successResponse(res,{sources:sources.rows,runs:runs.rows,imports:imports.rows,registry:registry.rows,coverage});
+  const {rows:actualCoverage}=await db.query(`select coalesce(v.description->'record'->>'type','scheme') as type,
+    coalesce(nullif(v.metadata->>'state',''),s.coverage_state,'India') as jurisdiction,
+    coalesce(v.description->'record'->'authority'->>'text',v.metadata->>'issuer',s.department) as authority,count(*)::int as published
+    from public.schemes s left join public.scheme_catalog_imports i on i.scheme_id=s.id left join public.scheme_catalog_versions v on v.id=i.published_version
+    where s.status='ACTIVE' group by 1,2,3 order by 2,1`);
+  successResponse(res,{sources:sources.rows,runs:runs.rows,imports:imports.rows,registry:registry.rows,coverage,categories:categories.rows.map(row=>row.name),actualCoverage});
 
+});
+router.post('/categories',async(req,res)=>{
+  const {name}=z.object({name:z.string().trim().min(2).max(100)}).strict().parse(req.body);
+  await (await database()).transaction(async db=>{await db.query('insert into public.catalog_categories(name) values($1) on conflict do nothing',[name]);
+    await audit(db,req.user!.id,'category.added','category',name,'Configured public catalogue category.');});successResponse(res,{saved:true});
 });
 router.put('/registry/:id',async(req,res)=>{
   const item=registryInput.parse({...req.body,id:req.params.id});
@@ -105,6 +116,15 @@ router.put('/versions/:id',async(req,res)=>{
 });
 router.post('/versions/:id/retry',async(req,res)=>{
   successResponse(res,await generateVersion(z.uuid().parse(req.params.id),true));
+});
+router.post('/versions/:id/refetch',async(req,res)=>{
+  await loadApprovedHosts();
+  const {rows:[row]}=await (await database()).query('select metadata,source_url from public.scheme_catalog_versions where id=$1',[z.uuid().parse(req.params.id)]);
+  if (!row) throw AppError.notFound('Source version not found.');
+  const document=await readDocument(createOfficialReader(),row.source_url,row.metadata.title);
+  const captured=await captureDocument(metadataSchema.parse(row.metadata),document,req.user!.id);
+  const version=captured.kind==='skipped'?captured.version:await generateVersion(captured.version.id);
+  successResponse(res,{result:captured.kind,version});
 });
 router.post('/versions/:id/publish',async(req,res)=>{
   z.object({verified:z.literal(true)}).parse(req.body);

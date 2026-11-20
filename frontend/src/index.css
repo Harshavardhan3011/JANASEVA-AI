@@ -81,6 +81,7 @@ button:disabled{cursor:default;opacity:.56}
 .workflow-steps li>span{display:grid;place-items:center;background:#e9eff3;border-radius:50%;width:24px;height:24px;font-size:.73rem}
 .workflow-steps .reached{border-color:#0b8783;color:#105958;font-weight:700}
 .workflow-steps .reached>span{background:#d7efea}
+.civic-hero input{width:100%;min-width:0;border:1px solid #a8c2cc;border-radius:10px;background:#fff;color:var(--ink);padding:14px 16px;font:inherit;box-shadow:0 3px 12px #163c4c08}
 .input-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px 18px;margin-top:14px}
 .input-grid label{display:grid;gap:6px;color:#233e54;font-size:.86rem;font-weight:700;align-content:end}
 .workflow input:not([type=checkbox]),.workflow select{border:1px solid #bfceda;border-radius:8px;background:#fff;color:var(--ink);min-width:0;padding:9px 11px;font:inherit}
@@ -127,3 +128,24 @@ button:disabled{cursor:default;opacity:.56}
 @media(max-width:680px){.civic-shell{width:calc(100% - 32px)}.civic-nav{height:64px;gap:10px}.civic-nav nav{display:none}.civic-nav-actions{gap:10px;font-size:.78rem}.civic-nav-actions .primary-action{min-height:36px;padding:7px 8px;font-size:.74rem}.civic-brand{font-size:.92rem}.civic-brand>span{width:34px;height:34px}.civic-hero-grid,.how-grid,.input-grid{grid-template-columns:1fr}.civic-hero h1{font-size:clamp(2.7rem,10vw,3.7rem)}.scheme-feature{flex-wrap:wrap;gap:11px;padding:14px}.scheme-feature>a{margin-left:62px}.civic-footer>div{flex-wrap:wrap}.workflow-card{padding:15px}.workflow-heading{align-items:flex-start;flex-wrap:wrap}.workflow-steps{gap:4px}.workflow-steps li{flex-direction:column;align-items:flex-start;gap:3px;font-size:.68rem}.dashboard-hero>svg{display:none}.app-list a>svg{display:none}}
 
 .civic-header{position:sticky;top:0;z-index:40;background:white}
+
+/* Shared information catalogue: readable cards, dates and keyboard-friendly forms. */
+.workflow-heading h1,.civic-hero h1{letter-spacing:-.035em;word-spacing:.04em}
+.workflow h1,.workflow h2,.workflow h3{overflow-wrap:anywhere}
+.workflow-card a,.workflow-card li,.workflow-card p{overflow-wrap:anywhere}
+.workflow textarea{border:1px solid #bfceda;border-radius:8px;padding:10px;color:var(--ink);background:white;max-width:100%;font:inherit}
+.catalog-card{box-shadow:0 4px 16px #153b5a06;transition:border-color .15s,box-shadow .15s}
+.catalog-card:hover{border-color:#83b8b5;box-shadow:0 7px 24px #153b5a0c}
+.catalog-card h3{font-size:1.12rem;line-height:1.45}
+.catalog-summary{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;color:var(--muted)}
+.source-link{color:#08645f;font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.record-dates{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-top:16px}
+.record-date{display:grid;gap:5px;padding:16px;border:1px solid #cce1e1;border-radius:10px;background:#f2f9f8}
+.record-date>span{font-size:1.2rem;font-weight:800;color:#153b5a}
+.record-date small{color:#4c6274}
+.prompt-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+.prompt-chips button{font-size:.8rem;border:1px solid #b4cfce;border-radius:24px;padding:8px 12px;background:white;color:#204f58;cursor:pointer}
+.dashboard-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.dashboard-metrics>a{display:grid;gap:5px;background:white;border:1px solid var(--line);border-radius:12px;padding:20px;min-width:0}
+.dashboard-metrics strong{font-size:1.35rem;color:#086d68}.dashboard-metrics span{font-size:.85rem;color:var(--muted)}
+@media(max-width:680px){.dashboard-metrics{grid-template-columns:1fr}.workflow input,.workflow select,.workflow textarea{width:100%}.record-dates{grid-template-columns:1fr}.workflow input[type=checkbox]{width:18px}.workflow .inline-actions>a,.workflow .inline-actions>button{max-width:100%;white-space:normal}.workflow-heading h1{font-size:1.85rem}}

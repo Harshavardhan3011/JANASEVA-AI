@@ -51,6 +51,7 @@ export async function cleanupPendingRegistrations() {
    and created_at<now()-interval '1 day'*$1::int
    and not exists(select 1 from public.citizen_scheme_watches where user_id=u.id)
    and not exists(select 1 from public.applications where user_id=u.id)
-   and not exists(select 1 from public.uploaded_documents where user_id=u.id)`,[env.PENDING_REGISTRATION_DAYS]);
+   and not exists(select 1 from public.uploaded_documents where user_id=u.id)
+   and not exists(select 1 from public.citizen_form_drafts where user_id=u.id)`,[env.PENDING_REGISTRATION_DAYS]);
  await (await database()).query("delete from public.auth_email_limits where window_start<now()-interval '2 days'");
 }

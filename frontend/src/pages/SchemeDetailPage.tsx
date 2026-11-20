@@ -1,5 +1,5 @@
 import { useEffect,useState } from 'react';
-import { Link,useParams,useSearchParams } from 'react-router-dom';
+import { Link,useParams,useSearchParams,useNavigate } from 'react-router-dom';
 import { ArrowLeft,ArrowUpRight } from 'lucide-react';
 import { SchemeChecklist } from '../components/SchemeChecklist';
 import { useAuth } from '../hooks/useAuth';
@@ -7,6 +7,9 @@ import { api } from '../services/api';
 import { errorMessage } from '../services/workflow';
 import { dateLabel,describeStatus,schemeSections,unavailable } from '../services/schemeDetails';
 import type { Description,SchemeStatus,Section } from '../services/schemeDetails';
+import { RecordFacts } from '../components/RecordFacts';
+import { applicableRecord,publicSections } from '../services/governmentRecords';
+import type { GovernmentRecord,RecordType } from '../services/governmentRecords';
 
 interface Detail {
   recheck_status:string|null;recheck_error:string|null;
@@ -16,10 +19,12 @@ interface Detail {
   application_url:string|null; application_deadline:string|null; application_cycle:string|null;
   benefits_summary:string|null; eligibility_summary:string|null; scheme_status:SchemeStatus;
   detail:Omit<Description,'reviewIssues'>|null;
+  record_type?:RecordType;record?:GovernmentRecord|null;
 }
 
 export const SchemeDetailPage=()=>{
   const {id}=useParams();
+  const navigate=useNavigate();
   const [params,setParams]=useSearchParams();
   const {user}=useAuth();
   const [refreshMessage,setRefreshMessage]=useState('');
@@ -78,11 +83,16 @@ export const SchemeDetailPage=()=>{
         <p>Source: <a className="font-semibold text-teal-800 underline" href={entry.official_url} target="_blank" rel="noreferrer">{entry.original_title || entry.department}</a></p>
         <p>Last verified: {entry.last_verified_at || entry.catalog_checked_on ? dateLabel(entry.last_verified_at || entry.catalog_checked_on!) : unavailable}</p>
         {entry.source_fetched_at ? <p>Published source fetched: {dateLabel(entry.source_fetched_at)}</p> : null}
-        {entry.application_url && entry.scheme_status!=='closed' ? <a className="primary-action" href={entry.application_url} target="_blank" rel="noreferrer">
+        {applicableRecord(entry.record_type) && entry.application_url && entry.scheme_status!=='closed' ? <a className="primary-action" href={entry.application_url} target="_blank" rel="noreferrer">
           Apply on official portal <ArrowUpRight size={16}/></a> : null}
+        {['regulatory_guide','notification','recruitment','exam','result'].includes(entry.record_type || '') && <a className="secondary-action mt-3" href={entry.official_url} target="_blank" rel="noreferrer">Download / view official notification</a>}
+        {user && applicableRecord(entry.record_type) && <button className="secondary-action mt-3" disabled={saving} onClick={async()=>{
+          setSaving(true);setActionError('');try {const result=await api.post('/citizen-schemes/drafts',{schemeId:id});navigate('/dashboard/drafts/'+result.data.data.id);}catch(err){setActionError(errorMessage(err));}finally{setSaving(false);}
+        }}>Prepare a personal draft</button>}
       </section>
+      {entry.record && <RecordFacts record={entry.record} source={entry.official_url}/>}
       {user && id && <SchemeChecklist id={id} items={[...(entry.detail?.documents || []),...(entry.detail?.applicationSteps || [])].map(claim=>claim.text)}/>}
-      {schemeSections.map(([key,label])=>{
+      {schemeSections.filter(([key])=>publicSections(entry.record_type).includes(key)).map(([key,label])=>{
         const claims=entry.detail?.[key];
         const List=key==='applicationSteps' ? 'ol' : 'ul';
         return <section className="workflow-card" key={key}><h2>{label}</h2>
