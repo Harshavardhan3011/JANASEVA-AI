@@ -28,7 +28,18 @@ async function main(){
   browser=await chromium.launch(browserOptions());const page=await browser.newPage({viewport:{width:1440,height:1000}});const errors=[];page.on('pageerror',error=>{errors.push(error.message);console.error('Browser error:',error.message);});
   const screenshots=resolve(__dirname,'../.data/records-ui');await mkdir(screenshots,{recursive:true});
   const fits=async()=>assert.equal(await page.locator('html').evaluate(element=>element.scrollWidth),page.viewportSize().width,'No horizontal page overflow');
+  for(const width of [1440,390]) {
+   await page.setViewportSize({width,height:900});let headerSize;
+   for(const route of ['/','/schemes','/ask','/login','/register']) {
+    await page.goto(frontend+route);const header=page.locator('.site-header');await header.getByRole('link',{name:'JANASEVA AI home',exact:true}).waitFor();
+    assert.equal(await header.locator('.civic-brand svg').count(),1);const box=await header.boundingBox();
+    if(headerSize)assert.deepEqual([box.x,box.width,box.height],headerSize);else headerSize=[box.x,box.width,box.height];
+    await fits();if(width===390){await header.getByLabel('Toggle navigation',{exact:true}).click();await header.getByRole('navigation',{name:'Mobile navigation',exact:true}).getByRole('link',{name:'Explore Schemes',exact:true}).waitFor();await page.keyboard.press('Escape');assert.equal(await header.locator('.site-mobile-menu').getAttribute('open'),null);}
+   }
+  }
+  await page.setViewportSize({width:1440,height:1000});
   await page.goto(frontend);await page.getByRole('button',{name:'Find a scheme',exact:true}).waitFor();await page.keyboard.press('Tab');await page.screenshot({path:join(screenshots,'home-desktop.png')});
+  assert.equal(await page.getByRole('link',{name:'Browse schemes',exact:true}).count(),0);
   await page.goto(frontend+'/schemes');await page.getByRole('status').filter({hasText:'published records'}).waitFor();await fits();await page.screenshot({path:join(screenshots,'catalog-desktop.png')});
   await page.getByLabel('Information type',{exact:true}).selectOption('public_notice');await page.getByRole('status').filter({hasText:'1 published records'}).waitFor();
   await page.goto(frontend+'/schemes/'+ids.svamitva);await page.getByRole('heading',{name:'Agenda and announcement',exact:true}).waitFor();assert.equal(await page.getByRole('link',{name:'Apply on official portal',exact:true}).count(),0);await page.getByText('2026-11-20',{exact:true}).waitFor();
@@ -43,7 +54,7 @@ async function main(){
   await page.setViewportSize({width:390,height:844});for(const id of [ids.svamitva,ids['pension-en'],ids.rules,ids.faq,ids['ap-service']]){await page.goto(frontend+'/schemes/'+id);await page.getByRole('button',{name:'Refresh official information',exact:true}).waitFor();await fits();}
   await page.goto(frontend+'/schemes/'+ids['pension-en']);await page.getByText('Registration deadline',{exact:true}).scrollIntoViewIfNeeded();await page.screenshot({path:join(screenshots,'pension-mobile.png')});
   await page.goto(frontend+'/dashboard/drafts');await page.getByRole('link',{name:'Income Certificate',exact:true}).waitFor();await fits();
-  await page.getByRole('button',{name:'Toggle navigation',exact:true}).click();await page.locator('aside').getByText('My account',{exact:true}).click();await page.locator('aside').getByRole('button',{name:'Log out',exact:true}).click();
+  await page.getByLabel('Toggle navigation',{exact:true}).click();await page.getByRole('navigation',{name:'Mobile navigation',exact:true}).getByRole('link',{name:'Explore Schemes',exact:true}).waitFor();await page.keyboard.press('Escape');await page.locator('header').getByText('My account',{exact:true}).click();await page.locator('header').getByRole('button',{name:'Log out',exact:true}).click();
   await page.goto(frontend+'/login');await page.locator('[name=email]').fill(process.env.Adminmail);await page.locator('[name=password]').fill(process.env.AdminPass);await page.locator('button[type=submit]').click();await page.waitForURL('**/admin');
   const editable=await call('/admin/schemes/'+ids['pension-en']+'/draft','POST',{},admin.token);await page.setViewportSize({width:390,height:844});await page.goto(frontend+'/admin/schemes?version='+editable.version_id);await page.getByRole('heading',{name:'Information type and structured details',exact:true}).waitFor();assert.equal(await page.getByLabel('Record type',{exact:true}).inputValue(),'public_notice');await fits();
   await page.goto(frontend+'/admin/sources');await page.getByRole('heading',{name:'Official source registry',exact:true}).waitFor();await page.getByText('Actual published coverage',{exact:true}).click();await fits();await page.screenshot({path:join(screenshots,'sources-mobile.png')});

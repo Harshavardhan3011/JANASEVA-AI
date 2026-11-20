@@ -1,19 +1,13 @@
-import { AccountMenu } from '../components/AccountMenu';
+import { SiteHeader } from '../components/SiteHeader';
 import { useState } from 'react';
 import { Link,useNavigate } from 'react-router-dom';
-import { ArrowRight, ArrowUpRight, CalendarDays, ChevronRight, ClipboardCheck, Globe2, Landmark, Search, ShieldCheck } from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+import { ArrowRight, CalendarDays, ChevronRight, ClipboardCheck, Globe2, Landmark, Search, ShieldCheck } from 'lucide-react';
 
 export const LandingPage = () => {
-  const { user } = useAuth();
   const navigate=useNavigate();
   const [query,setQuery]=useState('');
   return <div className="civic-landing">
-    <header className="civic-header"><div className="civic-shell civic-nav">
-      <Link className="civic-brand" to="/"><span><Landmark size={22}/></span><strong>JANASEVA<span> AI</span></strong></Link>
-      <nav aria-label="Main navigation"><Link to="/schemes">Explore Schemes</Link><Link to="/ask">Ask AI</Link><Link to="/dashboard">Dashboard</Link></nav>
-      <div className="civic-nav-actions"><AccountMenu/>{!user && <Link className="primary-action" to="/register">Create account <ArrowUpRight size={15}/></Link>}</div>
-    </div></header>
+    <SiteHeader />
     <main>
       <section className="civic-hero"><div className="civic-shell civic-hero-grid">
         <div className="civic-hero-copy">
@@ -25,7 +19,7 @@ export const LandingPage = () => {
             <div className="inline-actions"><button className="primary-action">Find a scheme</button><Link className="secondary-action" to={'/ask?q='+encodeURIComponent(query)}>Ask JANASEVA AI</Link></div>
           </form>
           <div className="prompt-chips" aria-label="Suggested searches">{['Apply for a certificate','Find a scholarship','Understand a government notice'].map(prompt=><button key={prompt} onClick={()=>{setQuery(prompt);navigate('/schemes?q='+encodeURIComponent(prompt));}}>{prompt}</button>)}</div>
-          <div className="hero-actions"><Link className="primary-action" to="/schemes">Browse schemes <ArrowRight size={18}/></Link><a href="#how-it-works" className="secondary-action">See how it works</a></div>
+          <div className="hero-actions"><a href="#how-it-works" className="secondary-action">See how it works</a></div>
           <span className="hero-note"><ShieldCheck size={17}/> Current catalog coverage starts in India.</span>
         </div>
         <div className="hero-board">

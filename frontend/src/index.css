@@ -16,6 +16,13 @@
 .civic-nav nav,.civic-nav-actions{display:flex;align-items:center;gap:28px;font-weight:700;font-size:.9rem}
 .civic-nav nav{color:#415a6d}
 .civic-nav a:hover,.back-link:hover{text-decoration:underline;text-underline-offset:4px}
+.site-header{flex-shrink:0;color:var(--ink)}
+.site-header .civic-brand{white-space:nowrap}
+.site-header nav a[aria-current=page]{color:var(--teal)}
+.site-mobile-menu{display:none}
+.site-header .site-mobile-menu>nav{display:grid}
+@media(max-width:1000px){.site-header .civic-nav{gap:16px}.site-header .civic-nav nav,.site-header .civic-nav-actions{gap:14px}.site-header .header-register{display:none}}
+@media(max-width:760px){.site-header .civic-nav>nav{display:none}.site-mobile-menu{display:block;position:relative}.site-mobile-menu>summary{display:flex;cursor:pointer;list-style:none;padding:8px;border-radius:8px}.site-mobile-menu>summary::-webkit-details-marker{display:none}.site-mobile-menu>nav{display:grid;position:absolute;right:0;top:calc(100% + 12px);width:min(280px,calc(100vw - 32px));padding:16px;border:1px solid var(--line);border-radius:12px;background:#fff;box-shadow:0 12px 30px #142d4620;gap:8px}.site-mobile-menu>nav a{padding:10px;border-radius:6px}.site-header .civic-nav-actions{gap:8px}.site-header .civic-shell{width:calc(100% - 32px)}}
 .civic-hero{background:#eff6f7;border-bottom:1px solid #e0ebef;padding:78px 0 82px}
 .civic-hero-grid{display:grid;grid-template-columns:1.03fr .97fr;gap:64px;align-items:center}
 .civic-kicker{display:inline-flex;gap:9px;align-items:center;font-size:.72rem;letter-spacing:.14em;color:#245b65;font-weight:800}
