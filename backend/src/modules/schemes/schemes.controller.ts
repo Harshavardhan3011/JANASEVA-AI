@@ -11,7 +11,7 @@ import { recordTypes,inferredType } from '../catalog/record.schema';
 import type { GovernmentRecord,RecordType } from '../catalog/record.schema';
 
 export interface CatalogScheme extends Scheme {
-  enrichment?:{status:string|null;checkedAt:string|null;fields:Record<string,{status:string;sources:string[];note:string}>}|null;
+  enrichment?:{status:string|null;checkedAt:string|null;mode:string|null;fields:Record<string,{status:string;sources:string[];note:string}>}|null;
   record_type:RecordType;record:GovernmentRecord|null;
   aliases:string[];
   recheck_status:string|null;
@@ -73,9 +73,9 @@ export async function schemes(id?: string, includeDetails=false): Promise<Catalo
       const matches=relatedTitles.filter(item=>item.id!==row.id && words.length && words.every(word=>item.title.toLowerCase().includes(word)));
       return {...relation,recordId:matches.length===1?matches[0].id:null};
     })}:null;
-    const report=row.enrichment as {checkedAt?:string;fields?:Record<string,{status:string;sources:string[];note:string}>}|null;
+    const report=row.enrichment as {checkedAt?:string;mode?:string;fields?:Record<string,{status:string;sources:string[];note:string}>}|null;
     const {enrichment_status,...publicRow}=row as CatalogScheme & {enrichment_status:string|null};
-    return {...publicRow,enrichment:{status:enrichment_status,checkedAt:report?.checkedAt || null,fields:report?.fields || {}},record,record_type:type,recheck_error:row.recheck_error?'The source recheck needs attention; the last verified record is shown.':null,
+    return {...publicRow,enrichment:{status:enrichment_status,checkedAt:report?.checkedAt || null,mode:report?.mode || null,fields:report?.fields || {}},record,record_type:type,recheck_error:row.recheck_error?'The source recheck needs attention; the last verified record is shown.':null,
       application_url:['scheme','citizen_service','recruitment','exam'].includes(type)?row.application_url:null};
   });
 }

@@ -9,7 +9,7 @@ import { sourcePreview } from './record.extract';
 import { inferredType } from './record.schema';
 import { env } from '../../config/env';
 import { enrichDetails,evidenceDocument,extractDetails,preserveVerified,stamp } from './catalog.enrichment';
-import type { EnrichmentReport } from './catalog.enrichment';
+import type { EnrichmentReport,ExtractionOutcome } from './catalog.enrichment';
 import type { EvidenceSource } from './catalog.types';
 import { matchesSchemeName,ambiguousVariant } from './catalog.identity';
 
@@ -96,12 +96,13 @@ export async function generateVersion(id:string,force=false) {
     if (!current.source_text.trim()) throw new Error(current.metadata.extraction?.error || 'The document has no readable source text. Upload a text-based official PDF.');
     const document:SourceDocument={url:current.source_url,originalTitle:current.original_title,text:current.source_text,applyUrl:current.metadata.applyUrl,incomplete:current.metadata.incomplete,links:current.metadata.sourceLinks};
     if(env.SCHEME_ENRICHMENT_ENABLED && !matchesSchemeName(current.source_text.slice(0,4500),current.metadata))throw new Error('The primary source does not clearly identify this scheme; existing published details were retained.');
-    let description=env.SCHEME_ENRICHMENT_ENABLED?await extractDetails(current.metadata,document):await describeScheme(current.metadata,current.source_text);
+    const outcome:ExtractionOutcome={mode:''};
+    let description=env.SCHEME_ENRICHMENT_ENABLED?await extractDetails(current.metadata,document,undefined,outcome):await describeScheme(current.metadata,current.source_text);
     if(env.SCHEME_ENRICHMENT_ENABLED && ambiguousVariant(current.metadata.title,current.source_text))description.reviewIssues.push('The guideline covers multiple study-level variants. Review each quoted condition before publishing this variant.');
     if(env.SCHEME_ENRICHMENT_ENABLED) {
       const {rows:[prior]}=await db.query<Version>(`select v.* from public.scheme_catalog_imports i join public.scheme_catalog_versions v on v.id=i.published_version where i.id=$1 and v.id<>$2`,[current.import_id,current.id]);
       if(prior?.description){const old=evidenceDocument({url:prior.source_url,originalTitle:prior.original_title,text:prior.source_text,applyUrl:prior.metadata.applyUrl,incomplete:prior.metadata.incomplete});evidence=[old,...(prior.evidence_sources || [])];description=preserveVerified(stamp(prior.description,old.url,old.scope,old.fingerprint),stamp(description,document.url,null,evidenceDocument(document).fingerprint));}
-      const enriched=await enrichDetails(current.metadata,document,description,evidence);description=enriched.description;evidence=enriched.sources;report=enriched.report;
+      const enriched=await enrichDetails(current.metadata,document,description,evidence,[],outcome);description=enriched.description;evidence=enriched.sources;report=enriched.report;
     }
     proposal=description;
     const errors=verifyDescription(description,current.source_text,[...evidence,{url:current.source_url,text:current.source_text}]).problems;

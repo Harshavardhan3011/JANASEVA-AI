@@ -53,6 +53,7 @@ jobs:
           DATABASE_URL: ${{ secrets.JANASEVA_DATABASE_URL }}
           INGESTION_DATABASE_URL: ${{ secrets.JANASEVA_INGESTION_DATABASE_URL }}
           LLM_PROVIDER: ${{ vars.JANASEVA_LLM_PROVIDER || 'gemini' }}
+          LLM_MODEL: ${{ vars.JANASEVA_LLM_MODEL }}
           LLM_API_KEY: ${{ secrets.JANASEVA_LLM_API_KEY }}
           TAVILY_API_KEY: ${{ secrets.JANASEVA_TAVILY_API_KEY }}
           SCHEME_SEARCH_API_KEY: ${{ secrets.JANASEVA_SCHEME_SEARCH_API_KEY }}

@@ -15,6 +15,7 @@ async function connect(): Promise<Storage> {
     const pool = new pg.Pool({ connectionString: (env.SCHEME_SYNC_WORKER?env.INGESTION_DATABASE_URL:'') || env.DATABASE_URL, max: 5,
       options: '-c search_path=public,extensions'+(env.SCHEME_SYNC_WORKER?' -c role=janaseva_ingestor':''), connectionTimeoutMillis: 10000 });
     await pool.query(env.SCHEME_SYNC_WORKER?'select 1 from public.scheme_catalog_sources limit 1':'select 1 from public.citizen_sessions limit 1');
+    if(env.SCHEME_SYNC_WORKER){const {rows:[identity]}=await pool.query('select current_user as role');if(identity.role!=='janaseva_ingestor'){await pool.end();throw new Error('The restricted ingestion role was not activated. Check database role membership.');}}
     return {
       query: (sql, params) => pool.query(sql, params),
       close: () => pool.end(),

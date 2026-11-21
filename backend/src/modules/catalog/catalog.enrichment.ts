@@ -15,8 +15,9 @@ export const enrichmentFields=['eligibility','documents','benefits','application
 type Field=typeof enrichmentFields[number];
 export interface EnrichmentReport {
  checkedAt:string;mode:string;fields:Record<string,{status:'verified'|'unverified';sources:string[];note:string}>;
- attempts:Array<{url:string;status:string;reason?:string;fields?:string[]}>;conflicts:string[];
+ attempts:Array<{url:string;status:string;reason?:string;fields?:string[];mode?:string}>;conflicts:string[];
 }
+export interface ExtractionOutcome {mode:string;providerError?:string}
 const claimsFor=(description:SchemeDescription,field:Field):Claim[]=>field==='fees'?description.record?.facts.fees || []:description[field] || [];
 export const missingFields=(description:SchemeDescription)=>enrichmentFields.filter(field=>!claimsFor(description,field).length || (field==='benefits' && !claimsFor(description,field).some(claim=>/[₹\d]/u.test(claim.text))) || (field==='dates' && !description.record?.dates.some(date=>date.kind==='application_deadline' && date.value)));
 
@@ -48,8 +49,11 @@ export function extractLabelledDetails(meta:ImportMetadata,document:SourceDocume
  result.record=record;return result;
 }
 
-export async function extractDetails(meta:ImportMetadata,document:SourceDocument,requestedFields?:string[]) {
- return env.LLM_API_KEY?describeScheme(meta,document.text,requestedFields):extractLabelledDetails(meta,document);
+export async function extractDetails(meta:ImportMetadata,document:SourceDocument,requestedFields?:string[],outcome?:ExtractionOutcome) {
+ if(env.LLM_API_KEY){try{const result=await describeScheme(meta,document.text,requestedFields);if(outcome)outcome.mode='AI with source validation';return result;}catch(error){
+   try{const result=extractLabelledDetails(meta,document);if(outcome){outcome.mode='Labelled official excerpts (AI unavailable)';outcome.providerError=error instanceof Error?error.message.slice(0,300):'AI unavailable.';}return result;}catch{throw error;}
+ }}
+ if(outcome)outcome.mode='Labelled official excerpts';return extractLabelledDetails(meta,document);
 }
 
 export function stamp(description:SchemeDescription,url:string,scope:string|null,hash:string) {
@@ -87,11 +91,12 @@ export function preserveVerified(previous:SchemeDescription,incoming:SchemeDescr
  result.reviewIssues=[...new Set([...previous.reviewIssues,...incoming.reviewIssues,...conflicts])].slice(0,12);return result;
 }
 
-export async function enrichDetails(meta:ImportMetadata,primary:SourceDocument,initial:SchemeDescription,previousSources:EvidenceSource[]=[],extraUrls:string[]=[]) {
+export async function enrichDetails(meta:ImportMetadata,primary:SourceDocument,initial:SchemeDescription,previousSources:EvidenceSource[]=[],extraUrls:string[]=[],initialOutcome?:ExtractionOutcome) {
  const primaryEvidence=evidenceDocument(primary);
  const description=stamp(initial,primary.url,sourceScope(primary.text),primaryEvidence.fingerprint);
  const sources=[primaryEvidence,...previousSources.filter(source=>source.url!==primary.url || source.fingerprint!==primaryEvidence.fingerprint)];
- const report:EnrichmentReport={checkedAt:new Date().toISOString(),mode:env.LLM_API_KEY?'AI with source validation':'Labelled official excerpts',fields:{},attempts:[],conflicts:[]};
+ const report:EnrichmentReport={checkedAt:new Date().toISOString(),mode:initialOutcome?.mode || (env.LLM_API_KEY?'AI with source validation':'Labelled official excerpts'),fields:{},attempts:[],conflicts:[]};
+ if(initialOutcome?.providerError)report.attempts.push({url:primary.url,status:'provider-fallback',reason:initialOutcome.providerError,mode:initialOutcome.mode});
  const missing=missingFields(description);
  const candidates=[...(primary.links || []).filter(link=>/guideline|specification|faq|apply|amend|contact/i.test(link.title)).map(link=>link.url),...extraUrls];
  if(new URL(primary.url).hostname.replace(/^www\./,'')==='scholarships.gov.in' && /schemeGuidelines/i.test(primary.url))candidates.push('https://scholarships.gov.in/All-Scholarships');
@@ -114,7 +119,8 @@ export async function enrichDetails(meta:ImportMetadata,primary:SourceDocument,i
    if(baseScope?.endsWith('onwards') && scope && !scope.endsWith('onwards') && !applicationPortal)throw new Error('This source is limited to '+scope+'; its applicability to the current application cycle needs review.');
    if(document.incomplete)throw new Error('The supplemental extraction is incomplete and requires review.');
    const evidence=evidenceDocument(document);
-   const candidate=stamp(await extractDetails(meta,document,missingFields(description)),document.url,scope,evidence.fingerprint);
+   const outcome:ExtractionOutcome={mode:''};
+   const candidate=stamp(await extractDetails(meta,document,missingFields(description),outcome),document.url,scope,evidence.fingerprint);
    const check=verifyDescription(candidate,document.text,[evidence]);
    if(check.problems.length)throw new Error(check.problems.join(' '));
    if(candidate.reviewIssues.length)throw new Error('The supplemental extraction contains unresolved review issues.');
@@ -135,7 +141,8 @@ export async function enrichDetails(meta:ImportMetadata,primary:SourceDocument,i
     } else if(materiallyDifferent(before,after))report.conflicts.push(field+': differing figures or conditions in '+document.url+'; existing verified values retained.');
    }
    if(filled.length || report.conflicts.length){const existing=sources.findIndex(source=>source.url===evidence.url && source.fingerprint===evidence.fingerprint);if(existing>=0)sources[existing]=evidence;else sources.push(evidence);}
-   report.attempts.push({url:document.url,status:filled.length?'enriched':'checked',fields:filled});
+   report.attempts.push({url:document.url,status:filled.length?'enriched':'checked',fields:filled,mode:outcome.mode,...(outcome.providerError?{reason:outcome.providerError}:{})});
+   if(outcome.mode.includes('excerpts') && !report.mode.includes('excerpts'))report.mode='AI and labelled official excerpts';
   }catch(error){const reason=error instanceof Error?error.message.slice(0,300):'Source verification failed.';report.attempts.push({url,status:'unverified',reason});if(/version.*incompatible|current application cycle needs review|Jurisdiction mismatch|variants need review/i.test(reason))report.conflicts.push('Scope verification needs review for '+url+'. Existing values were preserved.');}
  }
  for(const field of enrichmentFields){const rows=claimsFor(description,field),verified=rows.length>0 && !missingFields(description).includes(field);report.fields[field]={status:verified?'verified':'unverified',sources:[...new Set(rows.map(row=>row.sourceUrl || primary.url))],note:verified?'Supported by captured official evidence.':'Not verified after checking available official sources.'};}

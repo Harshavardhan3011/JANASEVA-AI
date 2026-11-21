@@ -12,7 +12,7 @@ import { applicableRecord,publicSections } from '../services/governmentRecords';
 import type { GovernmentRecord,RecordType } from '../services/governmentRecords';
 
 interface Detail {
-  enrichment?:{status:string|null;checkedAt:string|null;fields:Record<string,{status:string;sources:string[];note:string}>};
+  enrichment?:{status:string|null;checkedAt:string|null;mode?:string|null;fields:Record<string,{status:string;sources:string[];note:string}>};
   recheck_status:string|null;recheck_error:string|null;
   scheme_name:string; department:string; official_url:string; original_title:string|null;
   description:string; category:string|null; coverage_state:string|null;
@@ -86,6 +86,7 @@ export const SchemeDetailPage=()=>{
         {entry.source_fetched_at ? <p>Published source fetched: {dateLabel(entry.source_fetched_at)}</p> : null}
         {entry.enrichment?.status && <p>Detail enrichment · {entry.enrichment.status==='review'?'Some proposed details need verification':entry.enrichment.status==='completed'?'Official sources checked':entry.enrichment.status==='failed'?'Recheck needed; verified details retained':entry.enrichment.status}</p>}
         {entry.enrichment?.checkedAt && <p>Additional official sources checked: {dateLabel(entry.enrichment.checkedAt)}</p>}
+        {entry.enrichment?.mode && <p>Description method: {entry.enrichment.mode}</p>}
         {applicableRecord(entry.record_type) && entry.application_url && entry.scheme_status!=='closed' ? <a className="primary-action" href={entry.application_url} target="_blank" rel="noreferrer">
           Apply on official portal <ArrowUpRight size={16}/></a> : null}
         {['regulatory_guide','notification','recruitment','exam','result'].includes(entry.record_type || '') && <a className="secondary-action mt-3" href={entry.official_url} target="_blank" rel="noreferrer">Download / view official notification</a>}

@@ -29,6 +29,8 @@ test('official field enrichment backfills legacy CSSS in place, cites second sou
   // The captured primary guideline is replayed through the reader as HTML with identical text,
   // while a live-fetch smoke check separately verifies actual PDF bytes/parser.
   const primaryText=fixture.primary.text;
+  const {env}=await import('../config/env');env.LLM_API_KEY='controlled-provider-unavailable';globalThis.fetch=async()=>Response.json({error:'Do not expose provider bodies'},{status:404});
+  const extractionOutcome={mode:''};const fallback=await extractDetails(meta,fixture.primary,undefined,extractionOutcome);assert.ok(fallback.eligibility.length);assert.match(extractionOutcome.mode,/AI unavailable/);env.LLM_API_KEY='';
   globalThis.fetch=async(input,init)=>{const url=new URL(input instanceof Request?input.url:input.toString());if(url.pathname==='/robots.txt')return new Response('',{status:404});if(outage)return new Response('Unavailable',{status:503});if(url.pathname==='/All-Scholarships')return new Response(secondaryHtml,{headers:{'content-type':'text/html'}});if(url.href===fixture.primary.url)return new Response('<main>'+primaryText.split('\n').filter(Boolean).map((line:string)=>'<p>'+line+'</p>').join('')+'</main>',{headers:{'content-type':'text/html'}});return actualFetch(input,init);};
   const scoped=await readDocument(createOfficialReader(),'https://scholarships.gov.in/All-Scholarships',meta.title);assert.match(scoped.text,/30-11-2026/);assert.doesNotMatch(scoped.text,/01-01-2027/);assert.equal(scoped.incomplete,false);
   // Keep paragraph boundaries from the PDF fixture for exact labelled extraction.
