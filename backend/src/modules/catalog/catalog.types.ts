@@ -8,7 +8,7 @@ export const sectionNames={
   overview:'Overview', whoCanApply:'Who can apply', benefits:'Benefits', eligibility:'Eligibility',
   exclusions:'Exclusions', documents:'Documents', applicationSteps:'How to apply', dates:'Important dates', contacts:'Official contacts',
 };
-export const claimSchema=z.object({ text:z.string().trim().min(3).max(1600), quote:z.string().trim().min(5).max(2400) }).strict();
+export const claimSchema=z.object({ text:z.string().trim().min(3).max(1600), quote:z.string().trim().min(5).max(2400),sourceUrl:z.url().optional(),sourceHash:z.string().regex(/^[a-f0-9]{64}$/).optional(),scope:z.string().max(160).optional() }).strict();
 export const descriptionSchema=z.object({
   overview:z.array(claimSchema).max(4), whoCanApply:z.array(claimSchema).max(12),
   benefits:z.array(claimSchema).max(14), eligibility:z.array(claimSchema).max(18),
@@ -26,12 +26,15 @@ export const supportedHosts=new Set([
   'pib.gov.in','www.pib.gov.in','sspensions.ap.gov.in','pmkisan.gov.in','www.pmkisan.gov.in',
   'gsws-nbm.ap.gov.in','gramawardsachivalayam.ap.gov.in','nandyal.ap.gov.in',
   'apseva.ap.gov.in','vswsonline.ap.gov.in',
+  'scholarships.gov.in','www.scholarships.gov.in','www.education.gov.in','education.gov.in',
 ]);
 export const officialSourceUrl=z.url({protocol:/^https$/}).refine(value=>{
   const url=new URL(value);
   return (supportedHosts.has(url.hostname) || Boolean(publisherForHost(url.hostname))) && !url.username && !url.password && !url.port;
 },'Use an HTTPS URL on an approved government source domain.');
 export const metadataSchema=z.object({
+  schemeId:z.uuid().optional(),
+  sourceLinks:z.array(z.object({url:z.url(),title:z.string().max(255)})).max(30).optional(),
   title:z.string().trim().min(3).max(255),
   issuer:z.string().trim().min(2).max(255),
   officialId:z.string().trim().min(1).max(120).optional(),
@@ -52,7 +55,9 @@ export interface SourceDocument {
   url:string; originalTitle:string; text:string; applyUrl:string|null; incomplete:boolean;
   publicationDate?:string|null;sourceId?:string;originalLanguage?:string;identityUrl?:string;
   extraction?:ImportMetadata['extraction'];
+  links?:Array<{url:string;title:string}>;
 }
+export interface EvidenceSource {url:string;text:string;title:string;fetchedAt:string;fingerprint:string;scope:string|null;identityQuote:string;incomplete:boolean}
 
 export function canonicalSource(input:string) {
   const url=new URL(officialSourceUrl.parse(input));
@@ -71,7 +76,7 @@ export function canonicalSource(input:string) {
 export const compact=(text:string)=>text.normalize('NFKC').replace(/\s+/g,' ').trim();
 const numbers=(str:string)=>compact(str).match(/\d+(?:[,.]\d+)*/g)?.map(value=>value.replace(/,/g,'')) ?? [];
 
-export function verifyDescription(description:SchemeDescription,sourceText:string) {
+export function verifyDescription(description:SchemeDescription,sourceText:string,evidence:Array<Pick<EvidenceSource,'url'|'text'> & {fingerprint?:string}>=[]) {
   const source=compact(sourceText);
   const problems:string[]=[];
   const claims=sections.flatMap(key=>description[key] || []);
@@ -91,7 +96,9 @@ export function verifyDescription(description:SchemeDescription,sourceText:strin
   }
   for (const claim of claims) {
     const quote=compact(claim.quote);
-    if (!source.includes(quote)) problems.push('A citation does not match the official source text.');
+    const cited='sourceUrl' in claim && typeof claim.sourceUrl==='string'?evidence.find(document=>document.url===claim.sourceUrl && (!('sourceHash' in claim) || !claim.sourceHash || document.fingerprint===claim.sourceHash)):null;
+    const matching='sourceUrl' in claim && claim.sourceUrl?Boolean(cited && officialSourceUrl.safeParse(claim.sourceUrl).success && compact(cited.text).includes(quote)):source.includes(quote);
+    if (!matching) problems.push('A citation does not match its captured official source text.');
     if (numbers(claim.text).some(number=>!numbers(quote).includes(number))) problems.push('A claim has a figure or date absent from its citation.');
   }
   if (description.status!=='unknown') {

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const recordTypes=['scheme','citizen_service','public_notice','recruitment','exam','result','regulatory_guide','notification','directory','helpline','grievance','rti','scheme_update','event','faq'] as const;
-export const evidenceSchema=z.object({text:z.string().trim().min(3).max(1600),quote:z.string().trim().min(5).max(2400)}).strict();
+export const evidenceSchema=z.object({text:z.string().trim().min(3).max(1600),quote:z.string().trim().min(5).max(2400),sourceUrl:z.url().optional(),sourceHash:z.string().regex(/^[a-f0-9]{64}$/).optional(),scope:z.string().max(160).optional()}).strict();
 export const factKeys=['audience','venue','agenda','fees','processingTime','applicationChannels','posts','qualifications','referenceNumber','legalStatus','effectiveConditions','offices','grievanceChannels'] as const;
 export const dateKinds=['publication','application_open','application_deadline','registration_deadline','hearing','event','effective','result'] as const;
 function emptyFacts() {
@@ -14,6 +14,7 @@ export const recordDateSchema=z.object({
   time:z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/).nullable().default(null),
   timezone:z.literal('Asia/Kolkata').default('Asia/Kolkata'),
   text:z.string().trim().min(3).max(1600),quote:z.string().trim().min(5).max(2400),
+  sourceUrl:z.url().optional(),sourceHash:z.string().regex(/^[a-f0-9]{64}$/).optional(),scope:z.string().max(160).optional(),
 }).strict();
 export const recordSchema=z.object({
   type:z.enum(recordTypes),typeEvidence:evidenceSchema.nullable().default(null),
@@ -35,7 +36,7 @@ export function officialDate(text:string,publication:string|null=null):string|nu
   let year:number,month:number,day:number;
   const iso=text.match(/\b(20\d{2})-(\d{2})-(\d{2})\b/);
   const named=text.match(/(\d{1,2})(?:st|nd|rd|th)?\s+([A-Za-z]+|[\u0900-\u097f]+)[,\s]+(20\d{2})/i);
-  const numeric=text.match(/\b(\d{1,2})[./](\d{1,2})[./](20\d{2})\b/);
+  const numeric=text.match(/\b(\d{1,2})[./-](\d{1,2})[./-](20\d{2})\b/);
   if (iso) [,year,month,day]=iso.map(Number);
   else if (named && months[named[2].toLowerCase()]) {day=Number(named[1]);month=months[named[2].toLowerCase()];year=Number(named[3]);}
   else if (numeric) {day=Number(numeric[1]);month=Number(numeric[2]);year=Number(numeric[3]);}

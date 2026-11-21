@@ -19,6 +19,7 @@ export const env = z.object({
   SCHEME_MONITOR_KEY: z.string().refine(value => !value || value.length >= 32).default(''),
   SCHEME_MONITOR_ENABLED: z.enum(['true','false']).default('true').transform(value => value === 'true'),
   SCHEME_CATALOG_ENABLED: z.enum(['true','false']).default('true').transform(value => value==='true'),
+  SCHEME_ENRICHMENT_ENABLED: z.enum(['true','false']).optional().transform(value=>value===undefined?process.env.NODE_ENV!=='test':value==='true'),
   SCHEME_CATALOG_AUTO_PUBLISH: z.enum(['true','false']).default('true').transform(value => value==='true'),
   TAVILY_API_KEY: z.string().trim().default(''),
   SCHEME_SEARCH_API_KEY: z.string().trim().default(''),

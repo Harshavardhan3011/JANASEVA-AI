@@ -27,6 +27,8 @@ test('background import, validated publication, AP review, deduplication and fai
   process.env.SUPABASE_URL='';
   process.env.SUPABASE_SERVICE_ROLE_KEY='';
   process.env.SCHEME_CATALOG_ENABLED='true';
+  // This fixture isolates discovery/scheduling; enrichment has its own official-source suite.
+  process.env.SCHEME_ENRICHMENT_ENABLED='false';
   process.env.SCHEME_SEARCH_API_KEY='';
   process.env.TAVILY_API_KEY='';
   process.env.SCHEME_CATALOG_AUTO_PUBLISH='true';

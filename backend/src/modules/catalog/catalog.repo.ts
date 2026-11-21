@@ -7,6 +7,11 @@ import { canonicalSource, compact, verifyDescription } from './catalog.types';
 import type { ImportMetadata, SchemeDescription, SourceDocument } from './catalog.types';
 import { sourcePreview } from './record.extract';
 import { inferredType } from './record.schema';
+import { env } from '../../config/env';
+import { enrichDetails,evidenceDocument,extractDetails,preserveVerified,stamp } from './catalog.enrichment';
+import type { EnrichmentReport } from './catalog.enrichment';
+import type { EvidenceSource } from './catalog.types';
+import { matchesSchemeName,ambiguousVariant } from './catalog.identity';
 
 interface ImportRow {
   id:string; scheme_id:string|null; current_version:string|null; published_version:string|null;
@@ -20,7 +25,9 @@ export interface Version {
   review_disposition?:'pending'|'approved'|'rejected';
   error:string|null; generation_attempts:number; retry_at:Date|string|null;
   reviewed_by?:string|null;human_edited?:boolean;
+  evidence_sources?:EvidenceSource[];enrichment_report?:EnrichmentReport|null;
 }
+export const versionEvidence=(version:Version)=>[...(version.evidence_sources || []),{url:version.source_url,text:version.source_text}];
 
 async function lockImport(db:Database,id:string) {
   const { rows:[row] }=await db.query<ImportRow>('select * from public.scheme_catalog_imports where id=$1 for update',[id]);
@@ -28,20 +35,21 @@ async function lockImport(db:Database,id:string) {
   return row;
 }
 
-export async function captureDocument(meta:ImportMetadata,document:SourceDocument,actor:string|null=null) {
-  const canonical=canonicalSource(document.identityUrl || document.url);
+export async function captureDocument(meta:ImportMetadata,document:SourceDocument,actor:string|null=null,forceRevision=false) {
+  let canonical=canonicalSource(document.identityUrl || document.url);
+  if(meta.schemeId){const {rows:[existing]}=await (await database()).query<ImportRow>('select * from public.scheme_catalog_imports where scheme_id=$1',[meta.schemeId]);canonical=existing?.canonical_url || canonical+'#record-'+meta.schemeId;}
   const authority=new URL(canonical).hostname.replace(/^www\./,'');
   const legacyKey=meta.officialId ? authority+':'+meta.officialId.toUpperCase() : null;
   const key=meta.officialId && meta.state ? authority+':'+meta.state.toUpperCase()+':'+meta.officialId.toUpperCase() : legacyKey;
   const metadata={ ...meta,publicationDate:document.publicationDate ?? meta.publicationDate,
     sourceId:document.sourceId || meta.sourceId,originalLanguage:document.originalLanguage || meta.originalLanguage,
-    extraction:document.extraction,applyUrl:document.applyUrl,incomplete:document.incomplete };
+    extraction:document.extraction,sourceLinks:document.links,applyUrl:document.applyUrl,incomplete:document.incomplete };
   const hash=createHash('sha256').update(JSON.stringify([
     compact(document.text),document.originalTitle,document.applyUrl,document.incomplete,
   ])).digest('hex');
   return (await database()).transaction(async db=>{
-    await db.query(`insert into public.scheme_catalog_imports(canonical_url,official_key)
-      values($1,$2) on conflict do nothing`,[canonical,key]);
+    await db.query(`insert into public.scheme_catalog_imports(canonical_url,official_key,scheme_id)
+      values($1,$2,$3) on conflict do nothing`,[canonical,key,meta.schemeId || null]);
     const { rows }=await db.query<ImportRow>(`select * from public.scheme_catalog_imports
       where canonical_url=$1 or official_key=$2 for update`,[canonical,key]);
     if (rows.length!==1 || (key && rows[0].official_key && key!==rows[0].official_key && !(rows[0].canonical_url===canonical && rows[0].official_key===legacyKey))) {
@@ -52,7 +60,7 @@ export async function captureDocument(meta:ImportMetadata,document:SourceDocumen
     const { rows:[previous] }=entry.current_version ? await db.query<Version>(
       'select * from public.scheme_catalog_versions where id=$1',[entry.current_version]) : {rows:[]};
     const needsClassification=previous?.status==='published' && !previous.description?.record && inferredType(previous.original_title)!=='scheme';
-    if (previous?.fingerprint===hash && !needsClassification) return { kind:'skipped' as const, version:previous };
+    if (previous?.fingerprint===hash && !needsClassification && !forceRevision) return { kind:'skipped' as const, version:previous };
     const { rows:[version] }=await db.query<Version>(`
       insert into public.scheme_catalog_versions(import_id,original_title,source_url,source_text,fingerprint,metadata,requires_admin_review)
       values($1,$2,$3,$4,$5,$6,$7) returning *
@@ -75,7 +83,7 @@ export async function generateVersion(id:string,force=false) {
   const token=randomUUID();
   const { rows:[current] }=await db.query<Version>(`
     update public.scheme_catalog_versions v set generation_attempts=generation_attempts+1,
-      generation_lease_until=now()+interval '2 minutes',generation_token=$2
+      generation_lease_until=now()+interval '6 minutes',generation_token=$2
     from public.scheme_catalog_imports i where v.id=$1 and i.current_version=v.id and v.status<>'published'
       and (v.generation_lease_until is null or v.generation_lease_until<now())
       and ($3::boolean or ((v.description is null or v.status='generation_failed') and (v.retry_at is null or v.retry_at<=now())))
@@ -83,25 +91,35 @@ export async function generateVersion(id:string,force=false) {
   `,[id,token,force]);
   if (!current) return original;
   let proposal:SchemeDescription|undefined;
+  let evidence=current.evidence_sources || [],report:EnrichmentReport|null=null;
   try {
     if (!current.source_text.trim()) throw new Error(current.metadata.extraction?.error || 'The document has no readable source text. Upload a text-based official PDF.');
-    const description=await describeScheme(current.metadata,current.source_text);proposal=description;
-    const errors=verifyDescription(description,current.source_text).problems;
+    const document:SourceDocument={url:current.source_url,originalTitle:current.original_title,text:current.source_text,applyUrl:current.metadata.applyUrl,incomplete:current.metadata.incomplete,links:current.metadata.sourceLinks};
+    if(env.SCHEME_ENRICHMENT_ENABLED && !matchesSchemeName(current.source_text.slice(0,4500),current.metadata))throw new Error('The primary source does not clearly identify this scheme; existing published details were retained.');
+    let description=env.SCHEME_ENRICHMENT_ENABLED?await extractDetails(current.metadata,document):await describeScheme(current.metadata,current.source_text);
+    if(env.SCHEME_ENRICHMENT_ENABLED && ambiguousVariant(current.metadata.title,current.source_text))description.reviewIssues.push('The guideline covers multiple study-level variants. Review each quoted condition before publishing this variant.');
+    if(env.SCHEME_ENRICHMENT_ENABLED) {
+      const {rows:[prior]}=await db.query<Version>(`select v.* from public.scheme_catalog_imports i join public.scheme_catalog_versions v on v.id=i.published_version where i.id=$1 and v.id<>$2`,[current.import_id,current.id]);
+      if(prior?.description){const old=evidenceDocument({url:prior.source_url,originalTitle:prior.original_title,text:prior.source_text,applyUrl:prior.metadata.applyUrl,incomplete:prior.metadata.incomplete});evidence=[old,...(prior.evidence_sources || [])];description=preserveVerified(stamp(prior.description,old.url,old.scope,old.fingerprint),stamp(description,document.url,null,evidenceDocument(document).fingerprint));}
+      const enriched=await enrichDetails(current.metadata,document,description,evidence);description=enriched.description;evidence=enriched.sources;report=enriched.report;
+    }
+    proposal=description;
+    const errors=verifyDescription(description,current.source_text,[...evidence,{url:current.source_url,text:current.source_text}]).problems;
     if (errors.length) throw new Error(errors.join(' '));
     const { rows:[saved] }=await db.query<Version>(`
       update public.scheme_catalog_versions set description=$3,status='draft',error=null,
-        generation_lease_until=null,generation_token=null,retry_at=null
+        generation_lease_until=null,generation_token=null,retry_at=null,evidence_sources=$4,enrichment_report=$5
       where id=$1 and generation_token=$2 returning *
-    `,[id,token,JSON.stringify(description)]);
+    `,[id,token,JSON.stringify(description),JSON.stringify(evidence),report?JSON.stringify(report):null]);
     return saved || original;
   } catch(error) {
     const message=error instanceof Error ? error.message.slice(0,420) : 'AI description generation failed.';
     const minutes=Math.min(360,15*2**Math.min(current.generation_attempts-1,5));
     const { rows:[failed] }=await db.query<Version>(`
       update public.scheme_catalog_versions set status='generation_failed',error=$3,description=coalesce(description,$5::jsonb),
-        generation_lease_until=null,generation_token=null,retry_at=now()+interval '1 minute' * $4::integer
+        generation_lease_until=null,generation_token=null,retry_at=now()+interval '1 minute' * $4::integer,evidence_sources=$6,enrichment_report=$7
       where id=$1 and generation_token=$2 returning *
-    `,[id,token,message,minutes,current.source_text.trim()?JSON.stringify(proposal || sourcePreview(current.metadata,current.source_text)):null]);
+    `,[id,token,message,minutes,current.source_text.trim()?JSON.stringify(proposal || sourcePreview(current.metadata,current.source_text)):null,JSON.stringify(evidence),report?JSON.stringify(report):null]);
     return failed || original;
   }
 }
@@ -109,7 +127,7 @@ export async function generateVersion(id:string,force=false) {
 export async function editDraft(id:string,description:SchemeDescription,actor:string|null=null) {
   return (await database()).transaction(async db=>{
     const version=await currentDraft(db,id);
-    const validation=verifyDescription(description,version.source_text);
+    const validation=verifyDescription(description,version.source_text,versionEvidence(version));
     if (validation.problems.length) throw AppError.badRequest(validation.problems.join(' '));
     await db.query(`update public.scheme_catalog_versions set description=$2,status='draft',error=null,review_disposition='pending',requires_admin_review=true,
       generation_token=null,generation_lease_until=null,human_edited=true
@@ -138,7 +156,7 @@ export async function publishVersion(id:string,actor:string|null,reason='Verifie
     if (version.review_disposition==='rejected') throw AppError.conflict('This draft was rejected. Edit it before requesting publication.');
     const draft=version.description;
     if (!draft?.overview.length) throw AppError.badRequest('Add an overview supported by the official material before publishing.');
-    const validation=verifyDescription(draft,version.source_text);
+    const validation=verifyDescription(draft,version.source_text,versionEvidence(version));
     if (validation.problems.length) throw AppError.badRequest(validation.problems.join(' '));
     if (!actor && (version.requires_admin_review || draft.reviewIssues.length || version.metadata.incomplete ||
       /list of schemes|older amounts|uploaded PDF/i.test(version.metadata.reviewNote || ''))) return null;
@@ -196,7 +214,7 @@ export async function publishVersion(id:string,actor:string|null,reason='Verifie
       label=excluded.label,url=excluded.url,settings=excluded.settings`,
       ['tracked-'+entry.id,meta.title,version.source_url,JSON.stringify({
         title:meta.title,issuer:meta.issuer,state:meta.state,category:meta.category,
-        officialId:meta.officialId,aliases:meta.aliases,district:meta.district,coverageLevel:meta.coverageLevel,
+        schemeId:meta.schemeId,officialId:meta.officialId,aliases:meta.aliases,district:meta.district,coverageLevel:meta.coverageLevel,
         applicationPortalSource:meta.applicationPortalSource,reviewNote:meta.reviewNote,
       })]);
     if (actor) await db.query("update public.schemes set status='ACTIVE' where id=$1",[schemeId]);

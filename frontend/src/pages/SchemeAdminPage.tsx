@@ -16,11 +16,12 @@ interface Source {id:string;label:string;url:string;enabled:boolean;interval_min
 interface Run {id:string;source_id:string;trigger_kind:string;started_at:string;finished_at:string|null;added:number;changed:number;skipped:number;failed:number;published:number;error:string|null;outcomes:Array<{url:string;result:string;error?:string}>}
 interface Import {id:string;scheme_id:string|null;version_id:string;original_title:string;status:string;error:string|null;metadata:{title:string}}
 interface Registry {id:string;label:string;url:string;purpose:string;jurisdiction:string;department:string;access_method:string;access_note:string;approved:boolean;last_error:string|null}
-interface Dashboard {sources:Source[];runs:Run[];imports:Import[];registry:Registry[];coverage:Array<{jurisdiction:string;department:string;sources:number;approved:number}>;categories?:string[];actualCoverage?:Array<{jurisdiction:string;authority:string;type:string;published:number}>}
-interface Version {id:string;source_url:string;original_title:string;source_text:string;metadata:{title:string;applyUrl:string|null;reviewNote?:string;incomplete:boolean;extraction?:{method:string;characters:number;pages?:number;truncated:boolean;error?:string}};description:Description|null;published_description:Description|null;error:string|null;status:string;scheme_id:string|null;human_edited?:boolean}
+interface Dashboard {sources:Source[];runs:Run[];imports:Import[];registry:Registry[];coverage:Array<{jurisdiction:string;department:string;sources:number;approved:number}>;categories?:string[];actualCoverage?:Array<{jurisdiction:string;authority:string;type:string;published:number}>;enrichment?:Array<{scheme_id:string;scheme_name:string;status:string;attempts:number;completed_at:string|null;error:string|null;version_id:string|null}>}
+interface Version {id:string;source_url:string;original_title:string;source_text:string;metadata:{title:string;applyUrl:string|null;reviewNote?:string;incomplete:boolean;extraction?:{method:string;characters:number;pages?:number;truncated:boolean;error?:string}};description:Description|null;published_description:Description|null;error:string|null;status:string;scheme_id:string|null;human_edited?:boolean;evidence_sources?:Array<{url:string;text:string;title:string;scope:string|null;fetchedAt:string}>;enrichment_report?:{attempts:Array<{url:string;status:string;reason?:string}>;fields:Record<string,{status:string}>}}
 
-function ClaimInput({ claim,onChange }:{claim:Claim;onChange:(value:Claim)=>void}) {
+function ClaimInput({ claim,onChange,sources=[] }:{claim:Claim;onChange:(value:Claim)=>void;sources?:Array<{url:string;fingerprint?:string;scope?:string|null}>}) {
   return <div className="input-grid">
+    {sources.length>0 && <label className="sm:col-span-2">Captured official evidence<select value={Math.max(0,sources.findIndex(source=>source.url===claim.sourceUrl && (!claim.sourceHash || source.fingerprint===claim.sourceHash)))} onChange={event=>{const source=sources[Number(event.target.value)];onChange({...claim,sourceUrl:source.url,sourceHash:source.fingerprint,scope:source.scope || undefined});}}>{sources.map((source,index)=><option key={index} value={index}>{source.url}{source.scope?' · '+source.scope:''}{source.fingerprint?' · '+source.fingerprint.slice(0,8):''}</option>)}</select></label>}
     <label>Public wording<textarea aria-label="Public wording" className="rounded-md border border-slate-300 p-2" value={claim.text}
       minLength={3} maxLength={1600} placeholder="Describe one claim (at least 3 characters)" rows={3} onChange={event=>onChange({...claim,text:event.target.value})}/></label>
     <label>Exact passage from official source<textarea aria-label="Exact passage from official source" className="rounded-md border border-slate-300 p-2" value={claim.quote}
@@ -107,6 +108,7 @@ export const SchemeAdminPage=({section='editor'}:{section?:'editor'|'sources'})=
     {error ? <p role="alert" className="workflow-error whitespace-pre-line">{error}</p> : null}
     {message ? <p role="status">{message}</p> : null}
     {dashboard ? <>
+      <section className="workflow-card"><h2>Fill missing scheme details</h2><p>Checks official guidelines and related sources. Existing verified values and reviewed edits are preserved.</p><div className="inline-actions"><button className="secondary-action" disabled={busy} onClick={()=>void act(async()=>{const reply=await api.post(endpoint+'/enrichment',{});await loadDashboard();setMessage('Queued '+reply.data.data.queued+' records for resumable enrichment.');})}>Backfill incomplete records</button><button className="secondary-action" disabled={busy} onClick={()=>void act(loadDashboard)}>Refresh progress</button></div><ul className="mt-3 space-y-2">{dashboard.enrichment?.map(task=><li key={task.scheme_id}><Link className="source-link" to={'/schemes/'+task.scheme_id}>{task.scheme_name}</Link> · {task.status} · {task.attempts} attempts {task.error && <p>{task.error}</p>}{task.version_id && <button className="secondary-action" onClick={()=>void act(()=>open(task.version_id!))}>Inspect evidence</button>}<button className="secondary-action" disabled={busy || task.status==='running'} onClick={()=>void act(async()=>{await api.post(endpoint+'/enrichment',{schemeId:task.scheme_id});await loadDashboard();setMessage('Official field recheck queued.');})}>Retry enrichment</button></li>)}</ul></section>
       {section==='sources' && <><section className="workflow-card"><h2>Official source registry</h2>
         <p>Confirm the access method and publisher terms before approving a source. Feed and API contracts require a dedicated connector.</p>
         <details open={Boolean(registryEdit)||undefined}><summary>{registryEdit?'Edit official source':'Add an official source'}</summary><form key={registryEdit?.id || 'new'} className="grid gap-3 pt-3" onSubmit={event=>{
@@ -207,6 +209,9 @@ export const SchemeAdminPage=({section='editor'}:{section?:'editor'|'sources'})=
         <details className="mt-3"><summary className="cursor-pointer font-semibold">Official source text</summary>
           <pre className="mt-2 max-h-96 overflow-auto whitespace-pre-wrap break-words rounded-lg bg-slate-100 p-3 text-sm">{version.source_text}</pre>
         </details>
+        {version.evidence_sources?.filter(source=>source.url!==version.source_url).map((source,index)=><details className="mt-3" key={source.url+index}><summary>Supplemental official evidence · {source.scope || 'scope unspecified'}</summary><a className="source-link" href={source.url} target="_blank" rel="noreferrer">{source.title || source.url}</a><p>Fetched {dateLabel(source.fetchedAt)}</p><pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words text-sm">{source.text}</pre></details>)}
+        {version.enrichment_report && <details className="mt-3"><summary>Field enrichment checks</summary>{version.enrichment_report.attempts.map((attempt,index)=><p key={index}><a className="source-link" href={attempt.url}>{attempt.url}</a> · {attempt.status}{attempt.reason?' · '+attempt.reason:''}</p>)}</details>}
+        {version.scheme_id && <button className="secondary-action mt-3" disabled={busy} onClick={()=>void act(async()=>{await api.post(endpoint+'/enrichment',{schemeId:version.scheme_id});await loadDashboard();setMessage('Missing-field enrichment queued; verified details remain visible.');})}>Enrich missing fields</button>}
         {version.metadata.applyUrl ? <p>Application link from source: <a href={version.metadata.applyUrl}>{version.metadata.applyUrl}</a></p> : null}
         {version.published_description && version.status!=='published' ? <details className="mt-3">
           <summary className="cursor-pointer font-semibold">Compare with the published version</summary>
@@ -230,7 +235,7 @@ export const SchemeAdminPage=({section='editor'}:{section?:'editor'|'sources'})=
           {schemeSections.map(([section,label])=><details className="mt-3 rounded-md border border-slate-200 p-3" key={section} open={section==='overview'||error.includes(label+' item')||undefined}>
             <summary className="cursor-pointer font-semibold">{label} ({draft[section].length})</summary>
             {(draft[section] || []).map((claim,index)=><div key={index} className="pb-2">
-              <ClaimInput claim={claim} onChange={value=>updateClaim(section,index,value)}/>
+              <ClaimInput claim={claim} sources={version.evidence_sources} onChange={value=>updateClaim(section,index,value)}/>
               <button className="text-action mt-1" onClick={()=>setDraft(current=>({...current,[section]:current[section].filter((_,i)=>i!==index)}))}>Remove item</button>
             </div>)}
             <button className="secondary-action mt-2" onClick={()=>setDraft(current=>({...current,[section]:[...current[section],{text:'',quote:''}]}))}>Add item</button>
@@ -241,7 +246,7 @@ export const SchemeAdminPage=({section='editor'}:{section?:'editor'|'sources'})=
               setDraft(current=>({...current,status,statusEvidence:status==='unknown'?null:{text:'',quote:''}}));
             }}><option value="unknown">Not specified</option><option value="open">Open</option><option value="closed">Closed</option><option value="announced">Announced</option><option value="rolling">Rolling</option></select>
           </label>
-          {draft.statusEvidence ? <ClaimInput claim={draft.statusEvidence} onChange={claim=>setDraft(current=>({...current,statusEvidence:claim}))}/> : null}
+          {draft.statusEvidence ? <ClaimInput claim={draft.statusEvidence} sources={version.evidence_sources} onChange={claim=>setDraft(current=>({...current,statusEvidence:claim}))}/> : null}
           {version.status!=='published' ? <>
             <label className="grid gap-2 mt-3">Review reason<textarea value={reason} minLength={5} maxLength={1000} onChange={event=>setReason(event.target.value)}/></label>
             <label className="approval-check"><input type="checkbox" checked={verified} onChange={event=>setVerified(event.target.checked)}/>I verified the public description against the official source.</label>

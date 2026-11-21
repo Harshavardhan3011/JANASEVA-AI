@@ -51,6 +51,19 @@ async function findResults(host:string, topic:string) {
   return braveResponse.parse(response).web?.results ?? [];
 }
 
+export async function searchSchemeFields(title:string,state:string,fields:string[],hosts:string[]) {
+  if(!hasSearchKey())return [];
+  const queries=[fields.filter(field=>/eligibility|documents|benefits|fees/.test(field)),fields.filter(field=>/application|dates|contacts/.test(field))].filter(group=>group.length);
+  const found:string[]=[];
+  for(const [index,group] of queries.entries()) {
+    const host=hosts[index % hosts.length];if(!host)break;
+    const labels:Record<string,string>={eligibility:'eligibility conditions',documents:'required documents',benefits:'benefit amount',fees:'application fees',applicationSteps:'application steps how to apply',dates:'application deadlines current cycle',contacts:'official contact helpline'};
+    const results=await findResults(host,'"'+title+'" '+state+' '+group.map(field=>labels[field] || field).join(' ')+' official guidelines PDF amendments');
+    for(const result of results){const parsed=officialSourceUrl.safeParse(result.url);if(parsed.success && new URL(parsed.data).hostname.replace(/^www\./,'')===host.replace(/^www\./,''))found.push(canonicalSource(parsed.data));}
+  }
+  return [...new Set(found)].slice(0,4);
+}
+
 export async function searchOfficialSchemes(settings:unknown) {
   const {cursor}=scopeSchema.parse(settings);
   const publisher=searchPublishers[cursor % searchPublishers.length];

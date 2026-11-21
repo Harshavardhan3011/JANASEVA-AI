@@ -2,6 +2,8 @@ import { database } from '../../config/db';
 import { createOfficialReader, readDocument } from './catalog.fetch';
 import { captureDocument, generateVersion, publishVersion } from './catalog.repo';
 import { metadataSchema } from './catalog.types';
+import { env } from '../../config/env';
+import { enqueueBackfill,runEnrichmentTasks } from './catalog.backfill';
 
 export async function runRechecks() {
  const db=await database();
@@ -13,6 +15,12 @@ export async function runRechecks() {
      returning scheme_id`);
    if (!request) return;
    try {
+     if(env.SCHEME_ENRICHMENT_ENABLED){
+       await enqueueBackfill(request.scheme_id,true);await runEnrichmentTasks(1,request.scheme_id);
+       const {rows:[task]}=await db.query('select status,error from public.scheme_enrichment_tasks where scheme_id=$1',[request.scheme_id]);
+       if(task?.status!=='completed')throw new Error(task?.error || 'Official field enrichment needs review; previous details are retained.');
+       await db.query("update public.scheme_recheck_requests set status='completed',checked_at=now(),lease_until=null,error=null where scheme_id=$1",[request.scheme_id]);continue;
+     }
      const {rows:[source]}=await db.query(`select v.metadata,v.source_url from public.scheme_catalog_imports i
        join public.scheme_catalog_versions v on v.id=i.published_version where i.scheme_id=$1`,[request.scheme_id]);
      if (!source) throw new Error('This catalog entry needs an approved official-source import before rechecking.');

@@ -5,6 +5,7 @@ import pdf from 'pdf-parse/lib/pdf-parse.js';
 import { compact, officialSourceUrl } from './catalog.types';
 import type { SourceDocument } from './catalog.types';
 import { officialDate } from './record.schema';
+import { matchesSchemeName } from './catalog.identity';
 
 const agent='JANASEVA-AI';
 const fetchHeaders={'User-Agent':agent+'/1.0'};
@@ -100,9 +101,10 @@ export async function extractPdf(bytes:Buffer, url:string, title:string):Promise
   const text=doc.text.trim();
   if (text.length<30) throw new Error('This PDF has no readable text layer. Scanned PDFs need OCR; upload a text-based official version.');
   const info=doc.info as {Title?:string}|undefined;
-  const originalTitle=compact(info?.Title || title).slice(0,255);
+  const originalTitle=compact(info?.Title && !/^Microsoft (?:Word|PowerPoint)|^Document\d*/i.test(info.Title)?info.Title:title).slice(0,255);
   const applicationMatch=compact(text).match(/Form Submission\s+(https:\/\/[^\s]+)/i);
-  const application=applicationMatch?officialSourceUrl.safeParse(applicationMatch[1]):null;
+  const nspApplication=/apply online in the National Scholarships Portal/i.test(compact(text)) && /www\.scholarships\.gov\.in/i.test(text)?'https://scholarships.gov.in/':null;
+  const application=applicationMatch?officialSourceUrl.safeParse(applicationMatch[1]):nspApplication?officialSourceUrl.safeParse(nspApplication):null;
   // Retain both ends of long bilingual documents so an English part after a Hindi part is not silently lost.
   const english=text.search(/MINISTRY OF LABOUR AND EMPLOYMENT|MINISTRY OF [A-Z ]{4,80}\n/);
   const selected=text.length>textLimit?
@@ -134,8 +136,13 @@ export async function readDocument(read:OfficialReader,url:string,title:string):
   }
   $('script,style,nav,footer,header,noscript').remove();
   const body=$('.innner-page-main-about-us-content-right-part, article, main, #main-content, #mainContent').first();
-  const area=body.length ? body : $('body');
-  const lines=area.find('h1,h2,h3,h4,p,li,tr').toArray().map(node=>compact($(node).text())).filter(Boolean);
+  // NSP has a navigation <main> before its actual scheme cards. Scope to the requested card,
+  // including its h6 title, timeline spans and guideline links rather than the first <main>.
+  const card=/^(www\.)?scholarships\.gov\.in$/.test(new URL(resolved).hostname)?$('h6').filter((_,node)=>matchesSchemeName($(node).text(),{title,aliases:[]})).first().parent():$();
+  const area=card.length?card:body.length ? body : $('body');
+  const links:Array<{url:string;title:string}>=[];
+  area.find('a[href]').each((_,node)=>{try{const target=officialSourceUrl.parse(new URL($(node).attr('href')!,resolved).href);if(links.length<30)links.push({url:target,title:compact($(node).text()).slice(0,255)});}catch{/* Only approved public links. */}});
+  const lines=area.find('h1,h2,h3,h4,h5,h6,p,li,tr,span').toArray().map(node=>compact($(node).text())).filter(Boolean);
   const text=[...new Set([publisher,publicationText,...lines].filter(Boolean))].join('\n');
   const heading=compact(area.find('h1,h2').first().text() || $('title').text() || title).slice(0,255);
   let applyUrl:null|string=null;
@@ -150,7 +157,7 @@ export async function readDocument(read:OfficialReader,url:string,title:string):
   return { url:resolved, originalTitle:heading || title, text:text.slice(0,textLimit), applyUrl,publicationDate,
     sourceId:new URL(identityUrl || resolved).searchParams.get('PRID') || undefined,originalLanguage:/[\u0900-\u097f]/u.test(heading)?'hi':language,identityUrl,
     extraction:{method:'html',characters:text.length,truncated:text.length>textLimit},
-    incomplete:!body.length || text.length<150 || text.length>textLimit };
+    links,incomplete:!(body.length || card.length) || text.length<150 || text.length>textLimit };
 }
 
 export async function discoverPib(read:OfficialReader,url:string) {

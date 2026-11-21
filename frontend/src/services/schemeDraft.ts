@@ -21,7 +21,7 @@ export function prepareDraft(draft:Description):Description {
   for (const [section] of schemeSections) {
     const rows=draft[section] || [];
     // An untouched Add item placeholder carries no information. Never discard a partially completed claim.
-    cleaned[section]=rows.filter(row=>row.text.trim() || row.quote.trim()).map(row=>({text:row.text.trim(),quote:row.quote.trim()}));
+    cleaned[section]=rows.filter(row=>row.text.trim() || row.quote.trim()).map(row=>({...row,text:row.text.trim(),quote:row.quote.trim()}));
     rows.forEach((row,index)=>{
       if (!row.text.trim() && !row.quote.trim()) return;
       const result=claim.safeParse(row);
@@ -34,7 +34,7 @@ export function prepareDraft(draft:Description):Description {
   if (draft.status!=='unknown') {
     const result=claim.safeParse(draft.statusEvidence);
     if (!result.success) errors.push('Application status evidence: enter public wording (at least 3 characters) and an exact official passage (at least 5 characters), or choose Not specified.');
-    else cleaned.statusEvidence=result.data;
+    else cleaned.statusEvidence={...draft.statusEvidence,...result.data};
   } else cleaned.statusEvidence=null;
   if (draft.record) {
     const record=structuredClone(draft.record);

@@ -3,7 +3,7 @@ export const schemeSections=[
   ['documents','Documents'],['applicationSteps','How to Apply'],['dates','Important Dates'],['contacts','Official contacts'],
 ] as const;
 export type Section=typeof schemeSections[number][0];
-export interface Claim { text:string; quote:string }
+export interface Claim { text:string; quote:string;sourceUrl?:string;sourceHash?:string;scope?:string }
 export type SchemeStatus='unknown'|'announced'|'open'|'closed'|'rolling';
 export type Description=Record<Section,Claim[]> & {
   status:SchemeStatus; statusEvidence:Claim|null; reviewIssues:string[];

@@ -23,8 +23,10 @@
     "test:ui": "node docs/smoke.cjs",
     "monitor:key": "npm --prefix backend run monitor:key",
     "schemes:sync": "npm --prefix backend run schemes:sync",
+    "schemes:backfill": "npm --prefix backend run schemes:backfill --",
     "test:auth-ui": "npm run build:backend && node docs/auth-smoke.cjs",
-    "test:records-ui": "npm run build:backend && node docs/records-smoke.cjs"
+    "test:records-ui": "npm run build:backend && node docs/records-smoke.cjs",
+    "test:enrichment-ui": "npm run build:backend && node docs/enrichment-smoke.cjs"
   },
   "devDependencies": {
     "@typescript-eslint/parser": "^8.73.0",

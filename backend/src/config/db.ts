@@ -42,6 +42,7 @@ async function connect(): Promise<Storage> {
     'migrations/007_scheme_search.sql', 'migrations/008_citizen_scheme_alerts.sql', 'migrations/009_scheme_finder.sql', 'migrations/010_admin_sessions.sql', 'migrations/011_email_auth.sql', 'migrations/012_role_dashboards.sql',
     'migrations/20261120134249_government_records.sql',
     'migrations/20261120142343_ingestion_maintenance.sql',
+    'migrations/20261120150056_scheme_field_enrichment.sql',
     'seed/001_seed_schemes.sql', 'seed/002_seed_nsp_catalog.sql',
   ]) {
     await local.exec(await readFile(join(root, 'database', file), 'utf8'));

@@ -15,15 +15,27 @@ import { audit } from './catalog.audit';
 import { loadApprovedHosts, registryInput } from './catalog.registry';
 import { searchPublishers } from './catalog.publishers';
 import { hasSearchKey } from './catalog.search';
+import { enqueueBackfill } from './catalog.backfill';
 
 const router=Router();
 const upload=multer({storage:multer.memoryStorage(),limits:{files:1,fileSize:8*1024*1024,fields:16}});
 router.use(authMiddleware,requireSchemeReviewer);
 router.use((_req,res,next)=>{res.set('Cache-Control','no-store');next();});
+router.get('/enrichment',async(_req,res)=>{
+  const {rows}=await (await database()).query(`select t.*,s.scheme_name from public.scheme_enrichment_tasks t join public.schemes s on s.id=t.scheme_id order by t.requested_at desc limit 100`);
+  successResponse(res,rows);
+});
+router.post('/enrichment',async(req,res)=>{
+  const {schemeId}=z.object({schemeId:z.uuid().optional()}).strict().parse(req.body);
+  const queued=await enqueueBackfill(schemeId,true,req.user!.id);
+  await enqueueDiscovery('admin-enrichment',req.user!.id,false,true);
+  if(env.NODE_ENV!=='test')void processDiscoveryQueue().catch(()=>{});
+  successResponse(res,{queued},202);
+});
 
 router.get('/',async (_req,res)=>{
   const db=await database();
-  const [sources,runs,imports,registry,categories]=await Promise.all([
+  const [sources,runs,imports,registry,categories,enrichment]=await Promise.all([
     db.query(`select id,label,
       case when kind='official_search' then 'https://www.india.gov.in/directory/web-directory/state-uts' else url end as url,
       kind,enabled,interval_minutes,next_check_at,last_checked_at,last_success_at,
@@ -36,6 +48,7 @@ router.get('/',async (_req,res)=>{
       order by v.fetched_at desc limit 100`),
     db.query('select * from public.scheme_source_registry order by jurisdiction,department,label'),
     db.query('select name from public.catalog_categories order by name'),
+    db.query(`select t.scheme_id,s.scheme_name,t.status,t.attempts,t.completed_at,t.error,t.version_id from public.scheme_enrichment_tasks t join public.schemes s on s.id=t.scheme_id order by t.requested_at desc limit 100`),
   ]);
   const jurisdictions=[...new Set(['India',...searchPublishers.map(item=>item.state).filter(Boolean),...registry.rows.map(row=>row.jurisdiction)])];
   const departments=[...new Set(['Education','Agriculture','Health','Employment','Housing','Social welfare','Industry',...registry.rows.map(row=>row.department)])];
@@ -49,7 +62,7 @@ router.get('/',async (_req,res)=>{
     coalesce(v.description->'record'->'authority'->>'text',v.metadata->>'issuer',s.department) as authority,count(*)::int as published
     from public.schemes s left join public.scheme_catalog_imports i on i.scheme_id=s.id left join public.scheme_catalog_versions v on v.id=i.published_version
     where s.status='ACTIVE' group by 1,2,3 order by 2,1`);
-  successResponse(res,{sources:sources.rows,runs:runs.rows,imports:imports.rows,registry:registry.rows,coverage,categories:categories.rows.map(row=>row.name),actualCoverage});
+  successResponse(res,{sources:sources.rows,runs:runs.rows,imports:imports.rows,registry:registry.rows,coverage,categories:categories.rows.map(row=>row.name),actualCoverage,enrichment:enrichment.rows});
 
 });
 router.post('/categories',async(req,res)=>{

@@ -11,6 +11,7 @@ import { recordTypes,inferredType } from '../catalog/record.schema';
 import type { GovernmentRecord,RecordType } from '../catalog/record.schema';
 
 export interface CatalogScheme extends Scheme {
+  enrichment?:{status:string|null;checkedAt:string|null;fields:Record<string,{status:string;sources:string[];note:string}>}|null;
   record_type:RecordType;record:GovernmentRecord|null;
   aliases:string[];
   recheck_status:string|null;
@@ -51,12 +52,13 @@ export async function schemes(id?: string, includeDetails=false): Promise<Catalo
            case when v.id is not null then v.metadata->>'applyUrl' else s.application_url end as application_url,
            coalesce(v.description->'benefits'->0->>'text',s.benefits_summary) as benefits_summary,coalesce(v.description->'eligibility'->0->>'text',s.eligibility_summary) as eligibility_summary,coalesce(v.description->>'status','unknown') as scheme_status,
            coalesce(v.description->'record'->>'type','scheme') as record_type,v.description->'record' as record,
-           v.original_title,v.fetched_at as source_fetched_at,
+           v.original_title,v.fetched_at as source_fetched_at,v.enrichment_report as enrichment,t.status as enrichment_status,
            case when ($2::uuid is not null or $3::boolean) then v.description-'reviewIssues' end as detail
     from public.schemes s
     left join public.scheme_recheck_requests r on r.scheme_id=s.id
     left join public.scheme_catalog_imports i on i.scheme_id=s.id
     left join public.scheme_catalog_versions v on v.id=i.published_version
+    left join public.scheme_enrichment_tasks t on t.scheme_id=s.id
     where s.status='ACTIVE' and ($2::uuid is null or s.id=$2)
     order by guided_application desc,scheme_name
   `, [SCHEME_ID,id ?? null,includeDetails]);
@@ -71,7 +73,9 @@ export async function schemes(id?: string, includeDetails=false): Promise<Catalo
       const matches=relatedTitles.filter(item=>item.id!==row.id && words.length && words.every(word=>item.title.toLowerCase().includes(word)));
       return {...relation,recordId:matches.length===1?matches[0].id:null};
     })}:null;
-    return {...row,record,record_type:type,recheck_error:row.recheck_error?'The source recheck needs attention; the last verified record is shown.':null,
+    const report=row.enrichment as {checkedAt?:string;fields?:Record<string,{status:string;sources:string[];note:string}>}|null;
+    const {enrichment_status,...publicRow}=row as CatalogScheme & {enrichment_status:string|null};
+    return {...publicRow,enrichment:{status:enrichment_status,checkedAt:report?.checkedAt || null,fields:report?.fields || {}},record,record_type:type,recheck_error:row.recheck_error?'The source recheck needs attention; the last verified record is shown.':null,
       application_url:['scheme','citizen_service','recruitment','exam'].includes(type)?row.application_url:null};
   });
 }

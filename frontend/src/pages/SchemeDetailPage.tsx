@@ -12,6 +12,7 @@ import { applicableRecord,publicSections } from '../services/governmentRecords';
 import type { GovernmentRecord,RecordType } from '../services/governmentRecords';
 
 interface Detail {
+  enrichment?:{status:string|null;checkedAt:string|null;fields:Record<string,{status:string;sources:string[];note:string}>};
   recheck_status:string|null;recheck_error:string|null;
   scheme_name:string; department:string; official_url:string; original_title:string|null;
   description:string; category:string|null; coverage_state:string|null;
@@ -83,6 +84,8 @@ export const SchemeDetailPage=()=>{
         <p>Source: <a className="font-semibold text-teal-800 underline" href={entry.official_url} target="_blank" rel="noreferrer">{entry.original_title || entry.department}</a></p>
         <p>Last verified: {entry.last_verified_at || entry.catalog_checked_on ? dateLabel(entry.last_verified_at || entry.catalog_checked_on!) : unavailable}</p>
         {entry.source_fetched_at ? <p>Published source fetched: {dateLabel(entry.source_fetched_at)}</p> : null}
+        {entry.enrichment?.status && <p>Detail enrichment · {entry.enrichment.status==='review'?'Some proposed details need verification':entry.enrichment.status==='completed'?'Official sources checked':entry.enrichment.status==='failed'?'Recheck needed; verified details retained':entry.enrichment.status}</p>}
+        {entry.enrichment?.checkedAt && <p>Additional official sources checked: {dateLabel(entry.enrichment.checkedAt)}</p>}
         {applicableRecord(entry.record_type) && entry.application_url && entry.scheme_status!=='closed' ? <a className="primary-action" href={entry.application_url} target="_blank" rel="noreferrer">
           Apply on official portal <ArrowUpRight size={16}/></a> : null}
         {['regulatory_guide','notification','recruitment','exam','result'].includes(entry.record_type || '') && <a className="secondary-action mt-3" href={entry.official_url} target="_blank" rel="noreferrer">Download / view official notification</a>}
@@ -91,6 +94,7 @@ export const SchemeDetailPage=()=>{
         }}>Prepare a personal draft</button>}
       </section>
       {entry.record && <RecordFacts record={entry.record} source={entry.official_url}/>}
+      {entry.enrichment?.checkedAt && <section className="workflow-card"><h2>Detail verification</h2><ul className="space-y-2 pt-2">{Object.entries(entry.enrichment.fields).map(([field,state])=><li key={field}><strong>{({applicationSteps:'How to apply',dates:'Application dates',fees:'Fees',documents:'Required documents',benefits:'Benefits',eligibility:'Eligibility',contacts:'Contacts'} as Record<string,string>)[field] || field}</strong> · {state.status==='verified'?'Supported by official evidence':'Not verified after checking available official sources.'}</li>)}</ul></section>}
       {user && id && <SchemeChecklist id={id} items={[...(entry.detail?.documents || []),...(entry.detail?.applicationSteps || [])].map(claim=>claim.text)}/>}
       {schemeSections.filter(([key])=>publicSections(entry.record_type).includes(key)).map(([key,label])=>{
         const claims=entry.detail?.[key];
@@ -99,9 +103,9 @@ export const SchemeDetailPage=()=>{
           {claims?.length ? <List className={key==='applicationSteps'?'ml-5 list-decimal space-y-2 pt-2':'space-y-2 pt-2'}>
             {claims.map((claim,index)=><li key={index}>{claim.text}{' '}
               <a title={claim.quote} aria-label={`Official source for ${label} item ${index+1}`}
-                 href={entry.official_url} target="_blank" rel="noreferrer" className="text-sm font-semibold text-teal-800 underline">Source</a>
+                 href={claim.sourceUrl || entry.official_url} target="_blank" rel="noreferrer" className="text-sm font-semibold text-teal-800 underline">Source</a>{claim.scope && <small className="block text-slate-600">Source scope: {claim.scope}</small>}
             </li>)}
-          </List> : <p>{legacy[key] || unavailable}</p>}
+          </List> : <p>{legacy[key] || (entry.enrichment?.fields[key]?.status==='unverified'?'Not verified after checking available official sources.':unavailable)}</p>}
         </section>;
       })}
     </>}

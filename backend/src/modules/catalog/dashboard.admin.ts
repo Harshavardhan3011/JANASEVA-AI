@@ -52,8 +52,8 @@ router.post('/schemes/:id/draft',async(req,res)=>{
     const {rows:[entry]}=await db.query('select * from public.scheme_catalog_imports where scheme_id=$1 for update',[id]);
     if (!entry?.published_version) throw AppError.conflict('Import official evidence for this scheme before editing a description.');
     if (entry.current_version!==entry.published_version) return entry.current_version;
-    const {rows:[copy]}=await db.query(`insert into public.scheme_catalog_versions(import_id,original_title,source_url,source_text,fingerprint,metadata,description,requires_admin_review)
-      select import_id,original_title,source_url,source_text,fingerprint,metadata,description,true from public.scheme_catalog_versions
+    const {rows:[copy]}=await db.query(`insert into public.scheme_catalog_versions(import_id,original_title,source_url,source_text,fingerprint,metadata,description,requires_admin_review,evidence_sources,enrichment_report)
+      select import_id,original_title,source_url,source_text,fingerprint,metadata,description,true,evidence_sources,enrichment_report from public.scheme_catalog_versions
       where id=$1 returning id`,[entry.published_version]);
     await db.query('update public.scheme_catalog_imports set current_version=$2 where id=$1',[entry.id,copy.id]);
     await audit(db,req.user!.id,'scheme.draft.created','version',copy.id,'Created an editable revision; published version preserved.');
