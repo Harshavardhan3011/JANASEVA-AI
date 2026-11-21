@@ -9,6 +9,7 @@ import { describeStatus } from '../services/schemeDetails';
 import type { SchemeStatus } from '../services/schemeDetails';
 import { recordLabels } from '../services/governmentRecords';
 import { isCertificateRecord,certificateType,certificateTypes } from '../services/certificates';
+import { CertificateDirectory,certificateGuideTypes,certificateDepartments } from '../components/CertificateDirectory';
 
 export const SchemesPage=({section='schemes'}:{section?:'schemes'|'certificates'})=>{
  const certificates=section==='certificates';
@@ -23,12 +24,13 @@ export const SchemesPage=({section='schemes'}:{section?:'schemes'|'certificates'
  const [type,setType]=useState('');const [department,setDepartment]=useState('');const [audience,setAudience]=useState('');const [regulatoryStatus,setRegulatoryStatus]=useState('');
  const [schemes,setSchemes]=useState<SchemeCardData[]>();
  const [error,setError]=useState('');
+ const [retry,setRetry]=useState(0);
  useEffect(()=>{
    const controller=new AbortController();setSchemes(undefined);setError('');
    api.get('/schemes',{params:{q:query,...(certificates?{type:'citizen_service'}:{})},signal:controller.signal}).then(result=>setSchemes((result.data.data as SchemeCardData[]).filter(record=>certificates?isCertificateRecord(record):!isCertificateRecord(record))))
      .catch(err=>{if (!controller.signal.aborted) setError(errorMessage(err));});
    return ()=>controller.abort();
- },[query,certificates]);
+ },[query,certificates,retry]);
  useEffect(()=>{setInput(query);},[query]);
  useEffect(()=>{
    const controller=new AbortController();
@@ -50,9 +52,9 @@ export const SchemesPage=({section='schemes'}:{section?:'schemes'|'certificates'
      <div className="grid gap-3 pt-4 sm:grid-cols-3">
        <label className="grid gap-2">State or UT<select aria-label="State or UT" value={state} onChange={event=>setState(event.target.value)}><option value="">All</option>
          {[...new Set([...states,...(schemes || []).map(scheme=>scheme.coverage_state).filter(Boolean)])].sort().map(value=><option key={value} value={value!}>{value}</option>)}</select></label>
-       {certificates?<label className="grid gap-2">Certificate type<select aria-label="Certificate type" value={certificateKind} onChange={event=>setCertificateKind(event.target.value)}><option value="">All certificates</option>{Object.entries(certificateTypes).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>:<label className="grid gap-2">Category<select value={category} onChange={event=>setCategory(event.target.value)}><option value="">All</option>
+       {certificates?<label className="grid gap-2">Certificate type<select aria-label="Certificate type" value={certificateKind} onChange={event=>setCertificateKind(event.target.value)}><option value="">All certificates</option>{Object.entries({...certificateTypes,...certificateGuideTypes}).map(([key,label])=><option key={key} value={key}>{label}</option>)}</select></label>:<label className="grid gap-2">Category<select value={category} onChange={event=>setCategory(event.target.value)}><option value="">All</option>
          {[...new Set((schemes || []).map(scheme=>scheme.category).filter(Boolean))].sort().map(value=><option key={value} value={value!}>{value}</option>)}</select></label>}
-       {certificates?<label className="grid gap-2">Issuing department<select aria-label="Issuing department" value={department} onChange={event=>setDepartment(event.target.value)}><option value="">All departments</option>{[...new Set((schemes || []).map(item=>item.department).filter(Boolean))].sort().map(value=><option key={value}>{value}</option>)}</select></label>:<label className="grid gap-2">Application status<select value={status} onChange={event=>setStatus(event.target.value)}><option value="">All</option>
+       {certificates?<label className="grid gap-2">Issuing department<select aria-label="Issuing department" value={department} onChange={event=>setDepartment(event.target.value)}><option value="">All departments</option>{[...new Set([...certificateDepartments,...(schemes || []).map(item=>item.department).filter(Boolean)])].sort().map(value=><option key={value}>{value}</option>)}</select></label>:<label className="grid gap-2">Application status<select value={status} onChange={event=>setStatus(event.target.value)}><option value="">All</option>
          {(['announced','open','closed','rolling','unknown'] as SchemeStatus[]).map(value=><option key={value} value={value}>{describeStatus(value)}</option>)}</select></label>}
      </div>
      {(type==='regulatory_guide' || type==='notification') && <label className="grid gap-2 pt-3">Regulatory status<input placeholder="For example: draft, amended, in force" value={regulatoryStatus} maxLength={40} onChange={event=>setRegulatoryStatus(event.target.value)}/></label>}
@@ -63,7 +65,9 @@ export const SchemesPage=({section='schemes'}:{section?:'schemes'|'certificates'
      </div>}
      <button className="text-action mt-3" onClick={()=>{setState('');setCategory('');setStatus('');setType('');setDepartment('');setAudience('');setRegulatoryStatus('');setCertificateKind('');}}>Clear filters</button>
    </section>
-   {error?<p role="alert" className="workflow-error">{error}</p>:!filtered?<p role="status">{certificates?'Loading certificates…':'Loading schemes…'}</p>:<>
+   {certificates && <CertificateDirectory query={query} state={state} kind={certificateKind} department={department}/>}
+   {certificates && <h2 className="text-2xl font-bold mt-6">Published certificate records</h2>}
+   {error?<div role="alert" className="workflow-error"><p>{error} {certificates?'The public certificate directory above is still available.':''}</p><button className="secondary-action" onClick={()=>setRetry(value=>value+1)}>Retry catalog</button></div>:!filtered?<p role="status">{certificates?'Loading certificates…':'Loading schemes…'}</p>:<>
      <p role="status">{filtered.length?filtered.length+(certificates?(filtered.length===1?' published certificate':' published certificates'):' published records'):certificates?'No verified certificates match your search. Try another state, certificate type or keyword.':'No verified records match these filters. Try another type, state or keyword.'}</p>
      <div className="grid gap-4 lg:grid-cols-2">{filtered.map(scheme=><SchemeCard key={scheme.id} scheme={scheme}/>)}</div>
    </>}

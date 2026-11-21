@@ -7,10 +7,13 @@ import { database } from '../../config/db';
 import { searchPublishers } from '../catalog/catalog.publishers';
 import { wakeCatalog } from '../catalog/catalog.job';
 import { hasSearchKey } from '../catalog/catalog.search';
+import { findCertificateGuides,certificateGuideAnswer } from '../schemes/certificate-directory';
 
 export async function answerQuestion(message:string,previousIds:string[]=[],userId?:string) {
+ const certificateIntent=/certificat|\budid\b|jeevan|pramaan|domicile|\bncl\b|\bpcc\b/i.test(message);
  const catalog=await schemes(undefined,true);
  const profile=userId?(await (await database()).query('select p.state,p.details,u.preferred_language from public.users u left join public.citizen_scheme_profiles p on p.user_id=u.id where u.id=$1',[userId])).rows[0]:null;
+ const certificateGuides=certificateIntent?findCertificateGuides(message,profile?.state || ''):[];
  const contextual=/this scheme|these schemes|documents|deadline|open|where.*apply/i.test(message);
  const nonLatinQuestion=[...message].some(character=>/\p{Letter}/u.test(character) && !/\p{Script=Latin}/u.test(character));
  let direct=findSchemes(catalog,message,profile?.state || '');
@@ -60,6 +63,7 @@ export async function answerQuestion(message:string,previousIds:string[]=[],user
    benefit:scheme.detail?.benefits[0]?.text || scheme.benefits_summary || 'Not specified in the official source.',
    requirements:[...(scheme.detail?.whoCanApply || []),...(scheme.detail?.eligibility || [])].map(claim=>claim.text),
    documents:(scheme.detail?.documents || []).map(claim=>claim.text),
+   applicationSteps:(scheme.detail?.applicationSteps || []).map(claim=>claim.text),
    dates:(scheme.detail?.dates || []).map(claim=>claim.text),
    scheme_status:scheme.scheme_status,deadline:verifiedDeadline(scheme),
    cycle:scheme.academic_year,application_url:scheme.scheme_status==='closed'?null:scheme.application_url,
@@ -75,7 +79,7 @@ export async function answerQuestion(message:string,previousIds:string[]=[],user
        if (card.record && card.record.type!=='scheme') {
          const facts=Object.entries(card.record.facts).flatMap(([key,claims])=>claims.slice(0,3).map(claim=>key+': '+claim.text));
          const dates=card.record.dates.map(date=>date.kind.replaceAll('_',' ')+': '+(date.value || 'Not specified in the official source.')+(date.kind==='hearing'?' · Hearing time '+(date.time || 'unspecified'):''));
-         return card.scheme_name+'\n'+card.description+'\n'+[...dates,...facts].slice(0,12).join('\n')+'\nNext action: '+(card.application_url?'Review the requirements and open the official application portal.':'Read the official source for the responsible authority and next steps.')+'\nOfficial source: '+card.official_url;
+         return card.scheme_name+'\n'+card.description+'\n'+[...dates,...facts,...card.documents.map(text=>'Document: '+text),...card.applicationSteps.map((text,index)=>(index+1)+'. '+text)].join('\n')+'\nNext action: '+(card.application_url?'Review the requirements and open the official application portal.':'Read the official source for the responsible authority and next steps.')+'\nOfficial source: '+card.official_url;
        }
        const details=card[focus];
        return card.scheme_name+'\n'+(details.length?details.slice(0,4).join('\n'):'Not specified in the official source.')+
@@ -84,9 +88,10 @@ export async function answerQuestion(message:string,previousIds:string[]=[],user
          '\nNext action: '+(card.application_url?'Review eligibility, then open the official application portal.':'Check the official source for the current application channel.')+'\nOfficial source: '+card.official_url;
      }).join('\n\n')
    : 'No matching scheme could be verified in the published catalog. Try a scheme name, category or state. Approved-source discovery will check for additional records when its worker next runs.';
- const followUp=cards.length && /scholar|student|college|certificate|licen[cs]e/i.test(message) && !profile?.state && !/pradesh|telangana|karnataka|kerala|tamil|maharashtra|bihar|delhi|gujarat/i.test(message)
+ if (certificateGuides.length) reply=(cards.length?reply+'\n\n':'')+certificateGuides.map(certificateGuideAnswer).join('\n\n');
+ const followUp=(cards.length || certificateGuides.length) && /scholar|student|college|certificate|licen[cs]e/i.test(message) && !profile?.state && !searchPublishers.some(p=>p.state && message.toLowerCase().includes(p.state.toLowerCase()))
    ? 'Which state or union territory do you live in?' : null;
- if (cards.length && focus==='requirements') reply+='\n\nThese are candidates to check. Confirm your study year, residence, income and other exclusions in each scheme’s official guidelines before applying.';
+ if (cards.length && focus==='requirements' && !certificateIntent) reply+='\n\nThese are candidates to check. Confirm your study year, residence, income and other exclusions in each scheme’s official guidelines before applying.';
  const guided=matches.some(scheme=>scheme.id===SCHEME_ID);
  const citations=guided?await retrievePolicyEvidence(/document/i.test(message)?'income certificate documents verification':'family income percentile regular degree'):[];
  if (guided && citations.length && /document|eligibility|income/i.test(message)) {
@@ -104,6 +109,6 @@ export async function answerQuestion(message:string,previousIds:string[]=[],user
        (reply.match(/https:\/\/\S+/g) || []).every(url=>translated.reply.includes(url))) reply=translated.reply;
    } catch {reply+='\nTranslation is unavailable. The original official wording and source links are shown.';}
  }
- return {reply, matches:cards,follow_up:followUp,ai_used:aiUsed,recheck_requested:needsDiscovery && (hasSearchKey() || matches.length>0),
+ return {reply, matches:cards,certificate_guides:certificateGuides.map(guide=>({slug:guide.slug,title:guide.title,scope:guide.scope,level:guide.level})),follow_up:followUp,ai_used:aiUsed,recheck_requested:needsDiscovery && (hasSearchKey() || matches.length>0),
    citations,scheme_id:guided?SCHEME_ID:null,suggested_actions:[]};
 }

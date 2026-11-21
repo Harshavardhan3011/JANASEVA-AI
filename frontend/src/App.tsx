@@ -19,6 +19,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 const MySchemesPage=lazy(()=>import('./pages/MySchemesPage').then(module=>({default:module.MySchemesPage})));
 import { DashboardPage } from './pages/DashboardPage';
 import { SchemesPage } from './pages/SchemesPage';
+import { CertificateGuidePage } from './components/CertificateDirectory';
 import { SchemeMonitorPage } from './pages/SchemeMonitorPage';
 import { SchemeLayout } from './layouts/SchemeLayout';
 import { SchemeDetailPage } from './pages/SchemeDetailPage';
@@ -43,6 +44,7 @@ export const App: React.FC = () => {
         <Route path="/schemes" element={<SchemesPage />} />
         <Route path="/schemes/:id" element={<SchemeDetailPage />} />
         <Route path="/certificates" element={<SchemesPage key="certificates" section="certificates" />} />
+        <Route path="/certificates/guides/:slug" element={<CertificateGuidePage />} />
         <Route path="/certificates/:id" element={<SchemeDetailPage section="certificates" />} />
         <Route path="/ask" element={<AssistantPage />} />
         <Route path="/assistant" element={<LegacyAsk/>} />

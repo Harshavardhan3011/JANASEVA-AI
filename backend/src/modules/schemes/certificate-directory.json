@@ -1,0 +1,1189 @@
+{
+  "version": 1,
+  "notice": "A directory entry is a starting point, not confirmation that every state issues that certificate. Source guides summarize the linked pages; current local rules must be checked. Missing fields are not inferred.",
+  "directories": [
+    {
+      "label": "Government Services Portal",
+      "url": "https://services.india.gov.in/"
+    },
+    {
+      "label": "ServicePlus service directory",
+      "url": "https://serviceonline.gov.in/viewAllServiceList.html"
+    }
+  ],
+  "states": [
+    {
+      "state": "Andhra Pradesh",
+      "url": "https://ap.gov.in/"
+    },
+    {
+      "state": "Arunachal Pradesh",
+      "url": "https://arunachalpradesh.gov.in/"
+    },
+    {
+      "state": "Assam",
+      "url": "https://assam.gov.in/"
+    },
+    {
+      "state": "Bihar",
+      "url": "https://state.bihar.gov.in/"
+    },
+    {
+      "state": "Chhattisgarh",
+      "url": "https://cgstate.gov.in/"
+    },
+    {
+      "state": "Goa",
+      "url": "https://goa.gov.in/"
+    },
+    {
+      "state": "Gujarat",
+      "url": "https://gujaratindia.gov.in/"
+    },
+    {
+      "state": "Haryana",
+      "url": "https://haryana.gov.in/"
+    },
+    {
+      "state": "Himachal Pradesh",
+      "url": "https://himachal.nic.in/"
+    },
+    {
+      "state": "Jharkhand",
+      "url": "https://jharkhand.gov.in/"
+    },
+    {
+      "state": "Karnataka",
+      "url": "https://karnataka.gov.in/"
+    },
+    {
+      "state": "Kerala",
+      "url": "https://kerala.gov.in/"
+    },
+    {
+      "state": "Madhya Pradesh",
+      "url": "https://mp.gov.in/"
+    },
+    {
+      "state": "Maharashtra",
+      "url": "https://maharashtra.gov.in/"
+    },
+    {
+      "state": "Manipur",
+      "url": "https://manipur.gov.in/"
+    },
+    {
+      "state": "Meghalaya",
+      "url": "https://meghalaya.gov.in/"
+    },
+    {
+      "state": "Mizoram",
+      "url": "https://mizoram.nic.in/"
+    },
+    {
+      "state": "Nagaland",
+      "url": "https://nagaland.gov.in/"
+    },
+    {
+      "state": "Odisha",
+      "url": "https://odisha.gov.in/"
+    },
+    {
+      "state": "Punjab",
+      "url": "https://punjab.gov.in/"
+    },
+    {
+      "state": "Rajasthan",
+      "url": "https://rajasthan.gov.in/"
+    },
+    {
+      "state": "Sikkim",
+      "url": "https://sikkim.gov.in/"
+    },
+    {
+      "state": "Tamil Nadu",
+      "url": "https://tn.gov.in/"
+    },
+    {
+      "state": "Telangana",
+      "url": "https://telangana.gov.in/"
+    },
+    {
+      "state": "Tripura",
+      "url": "https://tripura.gov.in/"
+    },
+    {
+      "state": "Uttar Pradesh",
+      "url": "https://up.gov.in/"
+    },
+    {
+      "state": "Uttarakhand",
+      "url": "https://uk.gov.in/"
+    },
+    {
+      "state": "West Bengal",
+      "url": "https://wb.gov.in/"
+    },
+    {
+      "state": "Andaman and Nicobar Islands",
+      "url": "https://andaman.gov.in/"
+    },
+    {
+      "state": "Chandigarh",
+      "url": "https://chandigarh.gov.in/"
+    },
+    {
+      "state": "Dadra and Nagar Haveli and Daman and Diu",
+      "url": "https://ddd.gov.in/"
+    },
+    {
+      "state": "Delhi",
+      "url": "https://delhi.gov.in/"
+    },
+    {
+      "state": "Jammu and Kashmir",
+      "url": "https://jk.gov.in/"
+    },
+    {
+      "state": "Ladakh",
+      "url": "https://ladakh.gov.in/"
+    },
+    {
+      "state": "Lakshadweep",
+      "url": "https://lakshadweep.gov.in/"
+    },
+    {
+      "state": "Puducherry",
+      "url": "https://py.gov.in/"
+    }
+  ],
+  "guides": [
+    {
+      "slug": "income",
+      "title": "Income certificate",
+      "department": "Revenue",
+      "aliases": [
+        "income",
+        "annual",
+        "family",
+        "income"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for income certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "income"
+    },
+    {
+      "slug": "caste",
+      "title": "Caste / community certificate",
+      "department": "Revenue",
+      "aliases": [
+        "community",
+        "SC",
+        "ST",
+        "BC",
+        "integrated",
+        "caste"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for caste / community certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "caste"
+    },
+    {
+      "slug": "residence",
+      "title": "Residence / domicile / nativity certificate",
+      "department": "Revenue",
+      "aliases": [
+        "domicile",
+        "nativity",
+        "local",
+        "resident"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for residence / domicile / nativity certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "residence"
+    },
+    {
+      "slug": "ews",
+      "title": "EWS income and asset certificate",
+      "department": "Revenue",
+      "aliases": [
+        "economically",
+        "weaker",
+        "section",
+        "assets"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for ews income and asset certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "ews"
+    },
+    {
+      "slug": "ncl",
+      "title": "OBC / non-creamy layer certificate",
+      "department": "Revenue",
+      "aliases": [
+        "OBC",
+        "NCL",
+        "BC",
+        "EBC",
+        "central",
+        "state"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for obc / non-creamy layer certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "ncl"
+    },
+    {
+      "slug": "birth",
+      "title": "Birth certificate",
+      "department": "Civil registration",
+      "aliases": [
+        "birth",
+        "registration",
+        "newborn"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for birth certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "birth"
+    },
+    {
+      "slug": "death",
+      "title": "Death certificate",
+      "department": "Civil registration",
+      "aliases": [
+        "death",
+        "registration",
+        "deceased"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for death certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "death"
+    },
+    {
+      "slug": "marriage",
+      "title": "Marriage certificate",
+      "department": "Civil registration",
+      "aliases": [
+        "marriage",
+        "registration",
+        "spouse"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for marriage certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "marriage"
+    },
+    {
+      "slug": "disability",
+      "title": "Disability certificate / UDID",
+      "department": "Health",
+      "aliases": [
+        "disability",
+        "divyang",
+        "UDID"
+      ],
+      "state": "",
+      "scope": "India · authorized disability certification hospitals",
+      "level": "source_guide",
+      "overview": "UDID provides a nationwide disability identification and certification platform.",
+      "eligibility": [
+        "Indian citizens with one of the 21 disabilities recognized under the RPwD Act, 2016; a guardian may apply for a minor or someone unable to apply."
+      ],
+      "documents": [
+        "Passport photograph",
+        "Signature or thumbprint",
+        "Identity proof",
+        "Relevant medical records"
+      ],
+      "steps": [
+        "Register at the official UDID portal and complete the application.",
+        "Contact the selected hospital’s UDID cell for a medical assessment date.",
+        "Attend assessment; the authorized hospital checks documents and issues certification through the system.",
+        "Track progress using the portal’s application-status service. A designated hospital can assist with offline access."
+      ],
+      "fees": "NIL (as stated by DEPwD)",
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": "https://swavlambancard.gov.in/",
+      "sources": [
+        {
+          "url": "https://depwd.gov.in/en/udid-scheme/",
+          "label": "DEPwD · UDID project guide",
+          "supports": [
+            "overview",
+            "eligibility",
+            "documents",
+            "steps",
+            "fees",
+            "applicationUrl"
+          ]
+        }
+      ],
+      "checkedOn": "2026-11-21",
+      "kind": "disability"
+    },
+    {
+      "slug": "life",
+      "title": "Life certificate / Jeevan Pramaan",
+      "department": "Pensions",
+      "aliases": [
+        "pension",
+        "pensioner",
+        "digital",
+        "life",
+        "DLC"
+      ],
+      "state": "",
+      "scope": "India · onboarded pension authorities",
+      "level": "source_guide",
+      "overview": "Jeevan Pramaan is an Aadhaar-based Digital Life Certificate for pensioners.",
+      "eligibility": [
+        "The pension sanctioning authority must be onboarded. The FAQ excludes re-employed and remarried pensioners."
+      ],
+      "documents": [
+        "Aadhaar or VID; name and mobile number",
+        "PPO number, pension account, bank, pension sanctioning and disbursing authority details"
+      ],
+      "steps": [
+        "Visit a Citizen Service Centre or pension disbursing office, or use the official application and its current authentication instructions.",
+        "Provide the required pension and identity information. At a centre, complete biometric authentication with the operator.",
+        "Keep the Pramaan ID sent by SMS after successful authentication. The certificate remains subject to authority approval.",
+        "Download the certificate and check acceptance on the official portal. Its validity follows the pension authority’s rules."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": "https://jeevanpramaan.gov.in/",
+      "sources": [
+        {
+          "url": "https://jeevanpramaan.gov.in/v1.0/misc/faq",
+          "label": "Jeevan Pramaan · official pensioner FAQ",
+          "supports": [
+            "overview",
+            "eligibility",
+            "documents",
+            "steps",
+            "applicationUrl"
+          ]
+        }
+      ],
+      "checkedOn": "2026-11-21",
+      "kind": "life"
+    },
+    {
+      "slug": "legal-heir",
+      "title": "Legal heir / surviving family member certificate",
+      "department": "Revenue",
+      "aliases": [
+        "succession",
+        "surviving",
+        "family",
+        "member",
+        "heir"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for legal heir / surviving family member certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "legal-heir"
+    },
+    {
+      "slug": "minority",
+      "title": "Minority certificate",
+      "department": "Social welfare",
+      "aliases": [
+        "religious",
+        "minority"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for minority certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "minority"
+    },
+    {
+      "slug": "nationality",
+      "title": "Nationality / citizenship certificate",
+      "department": "Home affairs",
+      "aliases": [
+        "citizenship",
+        "nationality"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for nationality / citizenship certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "nationality"
+    },
+    {
+      "slug": "police",
+      "title": "Police clearance / character certificate",
+      "department": "Police",
+      "aliases": [
+        "PCC",
+        "police",
+        "clearance",
+        "character",
+        "conduct"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for police clearance / character certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "police"
+    },
+    {
+      "slug": "bonafide",
+      "title": "Bonafide / study certificate",
+      "department": "Education",
+      "aliases": [
+        "student",
+        "study",
+        "bonafide"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for bonafide / study certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "bonafide"
+    },
+    {
+      "slug": "transfer",
+      "title": "School / college transfer certificate",
+      "department": "Education",
+      "aliases": [
+        "TC",
+        "school",
+        "leaving",
+        "transfer"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for school / college transfer certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "transfer"
+    },
+    {
+      "slug": "migration",
+      "title": "University migration certificate",
+      "department": "Education",
+      "aliases": [
+        "migration",
+        "university"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for university migration certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "migration"
+    },
+    {
+      "slug": "degree",
+      "title": "Degree / provisional / marks certificate",
+      "department": "Education",
+      "aliases": [
+        "degree",
+        "provisional",
+        "marksheet",
+        "transcript",
+        "duplicate"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for degree / provisional / marks certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "degree"
+    },
+    {
+      "slug": "land",
+      "title": "Land ownership / possession certificate",
+      "department": "Revenue",
+      "aliases": [
+        "land",
+        "possession",
+        "ownership",
+        "title"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for land ownership / possession certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "land"
+    },
+    {
+      "slug": "encumbrance",
+      "title": "Encumbrance certificate",
+      "department": "Registration",
+      "aliases": [
+        "EC",
+        "property",
+        "encumbrance"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for encumbrance certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "encumbrance"
+    },
+    {
+      "slug": "farmer",
+      "title": "Farmer / agriculturist certificate",
+      "department": "Agriculture",
+      "aliases": [
+        "farmer",
+        "agriculturist",
+        "agricultural"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for farmer / agriculturist certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "farmer"
+    },
+    {
+      "slug": "solvency",
+      "title": "Solvency certificate",
+      "department": "Revenue",
+      "aliases": [
+        "solvency",
+        "financial",
+        "standing"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for solvency certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "solvency"
+    },
+    {
+      "slug": "unmarried",
+      "title": "Unmarried / no impediment certificate",
+      "department": "Revenue",
+      "aliases": [
+        "bachelor",
+        "unmarried",
+        "no",
+        "impediment"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for unmarried / no impediment certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "unmarried"
+    },
+    {
+      "slug": "medical",
+      "title": "Medical fitness certificate",
+      "department": "Health",
+      "aliases": [
+        "fitness",
+        "medical",
+        "health"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for medical fitness certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "medical"
+    },
+    {
+      "slug": "vaccination",
+      "title": "Vaccination certificate",
+      "department": "Health",
+      "aliases": [
+        "vaccination",
+        "immunisation",
+        "covid"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for vaccination certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "vaccination"
+    },
+    {
+      "slug": "name-change",
+      "title": "Name change / gazette certificate",
+      "department": "Printing and stationery",
+      "aliases": [
+        "gazette",
+        "name",
+        "change"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for name change / gazette certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "name-change"
+    },
+    {
+      "slug": "business",
+      "title": "Business / establishment registration certificate",
+      "department": "Industry",
+      "aliases": [
+        "trade",
+        "establishment",
+        "business",
+        "registration"
+      ],
+      "state": "",
+      "scope": "Choose your state / issuing authority",
+      "level": "directory",
+      "overview": "Find the responsible official service for business / establishment registration certificate. Availability and requirements depend on the issuing authority.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Choose your state or UT below and open its official government portal.",
+        "Find this certificate in Citizen Services, e-District, Revenue, municipal services or the responsible department. Check that it covers your district and purpose.",
+        "Read the service-specific eligibility and document list. Use the required Central or State format where specified.",
+        "Follow the authority’s online or counter submission instructions. Check the stated fee before paying and retain the acknowledgement.",
+        "Use the official reference number to track the application, respond to queries, and download or collect the certificate as instructed."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [],
+      "checkedOn": null,
+      "kind": "business"
+    },
+    {
+      "slug": "ap-nandyal-caste",
+      "title": "Integrated caste, nativity and date of birth certificate",
+      "department": "Revenue",
+      "aliases": [
+        "community",
+        "SC",
+        "ST",
+        "BC",
+        "integrated",
+        "caste"
+      ],
+      "state": "Andhra Pradesh",
+      "scope": "Andhra Pradesh · Nandyal district",
+      "level": "source_guide",
+      "overview": "The district service page describes an integrated certificate used for education and employment. Its source was last updated in July 2025; confirm current procedures locally.",
+      "eligibility": [
+        "The district page lists SC, ST, BC and OC communities."
+      ],
+      "documents": [
+        "Application form",
+        "Family member’s caste certificate",
+        "SSC marks memo / date-of-birth extract / transfer certificate",
+        "Class 1–10 study certificates or GP/municipal birth record",
+        "Ration / EPIC / Aadhaar card",
+        "Schedules I–IV"
+      ],
+      "steps": [
+        "Read the district’s integrated certificate guidance and confirm the document alternatives and applicable schedules at the nearest Sachivalayam.",
+        "Submit through the MeeSeva centre described on that page. Confirm current submission arrangements with the centre.",
+        "Keep the application reference and ask the centre about status and certificate collection."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": null,
+      "sources": [
+        {
+          "url": "https://nandyal.ap.gov.in/service/caste-certificate/",
+          "label": "Nandyal District · caste certificate service",
+          "supports": [
+            "overview",
+            "eligibility",
+            "documents",
+            "steps"
+          ]
+        }
+      ],
+      "checkedOn": "2026-11-21",
+      "kind": "caste"
+    },
+    {
+      "slug": "ap-income",
+      "title": "Income certificate",
+      "department": "Revenue",
+      "aliases": [
+        "income",
+        "annual",
+        "family",
+        "income"
+      ],
+      "state": "Andhra Pradesh",
+      "scope": "Andhra Pradesh",
+      "level": "source_guide",
+      "overview": "APSeva SOP guidance. Current fees and service availability require confirmation.",
+      "eligibility": [],
+      "documents": [
+        "IT returns / pay slips or other income proof",
+        "Ration / EPIC / Aadhaar card"
+      ],
+      "steps": [
+        "Log into APSeva and select Income Certificate; complete the form and upload evidence.",
+        "Submit and retain the reference. Revenue officials verify; track the application and download after approval."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": "https://vswsonline.ap.gov.in/#/home",
+      "sources": [
+        {
+          "url": "https://apseva.ap.gov.in/assets/User-Manuals/EoDB%20SOP%20final.pdf#page=4",
+          "label": "APSeva official SOP · income",
+          "supports": [
+            "steps",
+            "applicationUrl",
+            "documents"
+          ]
+        }
+      ],
+      "checkedOn": "2026-11-21",
+      "kind": "income"
+    },
+    {
+      "slug": "ap-birth",
+      "title": "Birth certificate",
+      "department": "Civil registration",
+      "aliases": [
+        "birth",
+        "registration",
+        "newborn"
+      ],
+      "state": "Andhra Pradesh",
+      "scope": "Andhra Pradesh",
+      "level": "source_guide",
+      "overview": "APSeva SOP guidance. Current fees and service availability require confirmation.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Select Birth Certificate after APSeva Citizen Login; fill and submit the form.",
+        "The registrar verifies; track with the application number and download after approval."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": "https://vswsonline.ap.gov.in/#/home",
+      "sources": [
+        {
+          "url": "https://apseva.ap.gov.in/assets/User-Manuals/EoDB%20SOP%20final.pdf#page=2",
+          "label": "APSeva official SOP · birth",
+          "supports": [
+            "steps",
+            "applicationUrl"
+          ]
+        }
+      ],
+      "checkedOn": "2026-11-21",
+      "kind": "birth"
+    },
+    {
+      "slug": "ap-death",
+      "title": "Death certificate",
+      "department": "Civil registration",
+      "aliases": [
+        "death",
+        "registration",
+        "deceased"
+      ],
+      "state": "Andhra Pradesh",
+      "scope": "Andhra Pradesh",
+      "level": "source_guide",
+      "overview": "APSeva SOP guidance. Current fees and service availability require confirmation.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Select Death Certificate after APSeva Citizen Login; complete and submit the form.",
+        "The registrar verifies; track with the application number and download after approval."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": "https://vswsonline.ap.gov.in/#/home",
+      "sources": [
+        {
+          "url": "https://apseva.ap.gov.in/assets/User-Manuals/EoDB%20SOP%20final.pdf#page=3",
+          "label": "APSeva official SOP · death",
+          "supports": [
+            "steps",
+            "applicationUrl"
+          ]
+        }
+      ],
+      "checkedOn": "2026-11-21",
+      "kind": "death"
+    }
+  ]
+}

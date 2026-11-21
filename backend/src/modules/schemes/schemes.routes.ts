@@ -6,10 +6,13 @@ import { AppError } from '../../shared/errors';
 import { z } from 'zod';
 import { Router } from 'express';
 import { getSchemes, getSchemeById, searchSchemes } from './schemes.controller';
+import { certificateDirectory } from './certificate-directory';
 
 const router = Router();
 
 router.get('/', getSchemes);
+// Public, curated reference data; available even while the database is restarting.
+router.get('/certificate-directory',(_req,res)=>successResponse(res,certificateDirectory));
 router.get('/locations',(_req,res)=>successResponse(res,[...new Set(searchPublishers.map(item=>item.state).filter(Boolean))].sort()));
 router.get('/:id', getSchemeById);
 router.post('/:id/refresh',rateLimit({windowMs:3600000,limit:10}),async(req,res)=>{

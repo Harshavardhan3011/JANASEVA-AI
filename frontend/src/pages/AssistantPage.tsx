@@ -1,11 +1,11 @@
 import { useEffect,useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link,useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { errorMessage } from '../services/workflow';
 import { SchemeCard } from '../components/SchemeCard';
 import type { SchemeCardData } from '../components/SchemeCard';
-interface Turn {message:string;reply:string;matches?:SchemeCardData[];follow_up?:string|null;conversation_id:string;recheck_requested?:boolean}
+interface Turn {message:string;reply:string;matches?:SchemeCardData[];certificate_guides?:Array<{slug:string;title:string;scope:string}>;follow_up?:string|null;conversation_id:string;recheck_requested?:boolean}
 const examples=['Find scholarships for a third-year mechanical engineering student in Andhra Pradesh.','What documents do I need for an income certificate in Andhra Pradesh?','When is the Delhi Pension Adalat registration deadline?'];
 export const AssistantPage=()=>{
  const {user}=useAuth();
@@ -51,6 +51,7 @@ export const AssistantPage=()=>{
        {examples.map(example=><button key={example} className="secondary-action text-left" disabled={busy} onClick={()=>void send(example)}>{example}</button>)}</div>}
      {history.map((turn,index)=><article key={index} className="space-y-3 border-b border-slate-200 py-4">
        <p className="font-semibold">{turn.message}</p><p className="whitespace-pre-line">{turn.reply}</p>
+       {turn.certificate_guides?.map(guide=><p key={guide.slug}><Link className="text-action" to={'/certificates/guides/'+guide.slug}>{guide.title} · {guide.scope} · View guide</Link></p>)}
        {turn.follow_up && <button className="secondary-action" onClick={()=>setInput(turn.message+' My state is ')}>{turn.follow_up}</button>}
        {turn.recheck_requested && <p className="text-sm">A source check was requested. The last published information remains visible while the worker checks.</p>}
        <div className="grid gap-3 lg:grid-cols-2">{turn.matches?.map(scheme=><SchemeCard scheme={scheme} key={scheme.id}/>)}</div>
