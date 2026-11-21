@@ -10,6 +10,7 @@ export function SiteHeader() {
   const mobileMenu = useRef<HTMLDetailsElement>(null);
   const links = [
     { to: '/schemes', label: 'Explore Schemes' },
+    { to: '/certificates', label: 'Certificates' },
     { to: '/ask', label: 'Ask AI' },
     { to: '/dashboard', label: 'Dashboard' },
     ...(user?.is_admin ? [{ to: '/admin', label: 'Administration' }] : []),

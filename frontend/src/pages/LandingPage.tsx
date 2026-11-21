@@ -18,7 +18,7 @@ export const LandingPage = () => {
             <label className="grid gap-2">What support are you looking for?<input placeholder="Search schemes or ask a question" maxLength={1500} value={query} onChange={event=>setQuery(event.target.value)}/></label>
             <div className="inline-actions"><button className="primary-action">Find a scheme</button><Link className="secondary-action" to={'/ask?q='+encodeURIComponent(query)}>Ask JANASEVA AI</Link></div>
           </form>
-          <div className="prompt-chips" aria-label="Suggested searches">{['Apply for a certificate','Find a scholarship','Understand a government notice'].map(prompt=><button key={prompt} onClick={()=>{setQuery(prompt);navigate('/schemes?q='+encodeURIComponent(prompt));}}>{prompt}</button>)}</div>
+          <div className="prompt-chips" aria-label="Suggested searches"><Link to="/certificates">Apply for a certificate</Link>{['Find a scholarship','Understand a government notice'].map(prompt=><button key={prompt} onClick={()=>{setQuery(prompt);navigate('/schemes?q='+encodeURIComponent(prompt));}}>{prompt}</button>)}</div>
           <div className="hero-actions"><a href="#how-it-works" className="secondary-action">See how it works</a></div>
           <span className="hero-note"><ShieldCheck size={17}/> Current catalog coverage starts in India.</span>
         </div>

@@ -1,5 +1,5 @@
 import { useEffect,useState } from 'react';
-import { Link,useParams,useSearchParams,useNavigate } from 'react-router-dom';
+import { Link,Navigate,useParams,useSearchParams,useNavigate } from 'react-router-dom';
 import { ArrowLeft,ArrowUpRight } from 'lucide-react';
 import { SchemeChecklist } from '../components/SchemeChecklist';
 import { useAuth } from '../hooks/useAuth';
@@ -10,6 +10,7 @@ import type { Description,SchemeStatus,Section } from '../services/schemeDetails
 import { RecordFacts } from '../components/RecordFacts';
 import { applicableRecord,publicSections } from '../services/governmentRecords';
 import type { GovernmentRecord,RecordType } from '../services/governmentRecords';
+import { isCertificateRecord } from '../services/certificates';
 
 interface Detail {
   enrichment?:{status:string|null;checkedAt:string|null;mode?:string|null;fields:Record<string,{status:string;sources:string[];note:string}>};
@@ -23,7 +24,7 @@ interface Detail {
   record_type?:RecordType;record?:GovernmentRecord|null;
 }
 
-export const SchemeDetailPage=()=>{
+export const SchemeDetailPage=({section='schemes'}:{section?:'schemes'|'certificates'})=>{
   const {id}=useParams();
   const navigate=useNavigate();
   const [params,setParams]=useSearchParams();
@@ -34,6 +35,8 @@ export const SchemeDetailPage=()=>{
   const [saving,setSaving]=useState(false);
   const [entry,setEntry]=useState<Detail>();
   const [error,setError]=useState('');
+  const certificate=entry?isCertificateRecord(entry):section==='certificates';
+  const detailPath=(certificate?'/certificates/':'/schemes/')+id;
   useEffect(()=>{
     const controller=new AbortController();
     setEntry(undefined);setError('');setActionError('');setFollowing(false);
@@ -56,9 +59,10 @@ export const SchemeDetailPage=()=>{
     overview:entry.description, benefits:entry.benefits_summary, eligibility:entry.eligibility_summary,
     dates:entry.application_deadline ? 'Recorded cycle '+(entry.application_cycle || 'unspecified')+'. Current application window could not be verified. Check the official portal.' : null,
   };
+  if(entry && ((section==='certificates')!==certificate))return <Navigate replace to={detailPath+(params.toString()?'?'+params.toString():'')}/>;
   return <div className="workflow">
-    <Link to="/schemes" className="back-link"><ArrowLeft size={17}/> All schemes</Link>
-    {error ? <p role="alert" className="workflow-error">{error}</p> : !entry ? <p role="status">Loading scheme…</p> : <>
+    <Link to={certificate?'/certificates':'/schemes'} className="back-link"><ArrowLeft size={17}/>{certificate?'All certificates':'All schemes'}</Link>
+    {error ? <p role="alert" className="workflow-error">{error}</p> : !entry ? <p role="status">{certificate?'Loading certificate…':'Loading scheme…'}</p> : <>
       <header className="workflow-heading"><div><h1>{entry.scheme_name}</h1><p>{[entry.department,entry.coverage_state,entry.category].filter(Boolean).join(' · ')}</p></div></header>
       <section className="workflow-card">
         {actionError && <p role="alert" className="workflow-error">{actionError}</p>}
@@ -70,7 +74,7 @@ export const SchemeDetailPage=()=>{
             finally {setSaving(false);}
           }}>{following?'Following updates':saving?'Saving…':'Follow updates'}</button>
           <Link to="/my-schemes" className="secondary-action">My schemes and eligibility checklist</Link>
-        </div> : <Link to={"/login?next="+encodeURIComponent("/schemes/"+id+"?save=1")} className="secondary-action">Log in to save</Link>}
+        </div> : <Link to={"/login?next="+encodeURIComponent(detailPath+"?save=1")} className="secondary-action">Log in to save</Link>}
       </section>
       <section className="workflow-card" aria-label="Official source">
         <div className="inline-actions"><button disabled={saving} className="secondary-action" onClick={async()=>{

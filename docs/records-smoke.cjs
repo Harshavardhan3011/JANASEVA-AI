@@ -30,7 +30,7 @@ async function main(){
   const fits=async()=>assert.equal(await page.locator('html').evaluate(element=>element.scrollWidth),page.viewportSize().width,'No horizontal page overflow');
   for(const width of [1440,390]) {
    await page.setViewportSize({width,height:900});let headerSize;
-   for(const route of ['/','/schemes','/ask','/login','/register']) {
+   for(const route of ['/','/schemes','/certificates','/ask','/login','/register']) {
     await page.goto(frontend+route);const header=page.locator('.site-header');await header.getByRole('link',{name:'JANASEVA AI home',exact:true}).waitFor();
     assert.equal(await header.locator('.civic-brand svg').count(),1);const box=await header.boundingBox();
     if(headerSize)assert.deepEqual([box.x,box.width,box.height],headerSize);else headerSize=[box.x,box.width,box.height];
@@ -41,6 +41,16 @@ async function main(){
   await page.goto(frontend);await page.getByRole('button',{name:'Find a scheme',exact:true}).waitFor();await page.keyboard.press('Tab');await page.screenshot({path:join(screenshots,'home-desktop.png')});
   assert.equal(await page.getByRole('link',{name:'Browse schemes',exact:true}).count(),0);
   await page.goto(frontend+'/schemes');await page.getByRole('status').filter({hasText:'published records'}).waitFor();await fits();await page.screenshot({path:join(screenshots,'catalog-desktop.png')});
+  assert.equal(await page.getByRole('link',{name:'Income Certificate',exact:true}).count(),0,'Certificates have their own section');
+  await page.locator('.site-header').getByRole('link',{name:'Certificates',exact:true}).click();await page.waitForURL('**/certificates');await page.getByRole('status').filter({hasText:'1 published certificate'}).waitFor();
+  await page.getByLabel('Certificate type',{exact:true}).selectOption('birth');await page.getByRole('status').filter({hasText:'No verified certificates'}).waitFor();await page.getByRole('button',{name:'Clear filters',exact:true}).click();await page.getByLabel('Certificate type',{exact:true}).selectOption('income');
+  await page.getByLabel('State or UT',{exact:true}).selectOption('Telangana');await page.getByRole('status').filter({hasText:'No verified certificates'}).waitFor();await page.getByRole('button',{name:'Clear filters',exact:true}).click();
+  await page.screenshot({path:join(screenshots,'certificates-desktop.png')});await page.getByRole('link',{name:'View details',exact:true}).click();await page.waitForURL('**/certificates/'+ids['ap-service']);await page.getByRole('heading',{name:'Fees',exact:true}).waitFor();await page.getByRole('heading',{name:'Processing time',exact:true}).waitFor();
+  await page.reload();await page.getByRole('link',{name:'All certificates',exact:true}).waitFor();await page.getByRole('link',{name:'Log in to save',exact:true}).click();assert.ok(new URL(page.url()).searchParams.get('next').startsWith('/certificates/'));
+  await page.locator('[name=email]').fill('record-demo@example.test');await page.locator('[name=password]').fill('RecordDemoPassword123!');await page.locator('button[type=submit]').click();await page.waitForURL('**/certificates/'+ids['ap-service']+'*');await page.getByRole('button',{name:'Following updates',exact:true}).waitFor();
+  await page.locator('.site-header').getByText('My account',{exact:true}).click();await page.locator('.site-header').getByRole('button',{name:'Log out',exact:true}).click();
+  await page.setViewportSize({width:390,height:844});await page.goto(frontend+'/certificates');await page.getByRole('status').filter({hasText:'1 published certificate'}).waitFor();await fits();await page.screenshot({path:join(screenshots,'certificates-mobile.png')});await page.reload();await page.getByRole('link',{name:'Income Certificate',exact:true}).waitFor();await page.getByLabel('Toggle navigation',{exact:true}).click();await page.getByRole('navigation',{name:'Mobile navigation',exact:true}).getByRole('link',{name:'Certificates',exact:true}).waitFor();await page.keyboard.press('Escape');
+  await page.setViewportSize({width:1440,height:1000});await page.goto(frontend+'/schemes');await page.getByRole('status').filter({hasText:'published records'}).waitFor();
   await page.getByLabel('Information type',{exact:true}).selectOption('public_notice');await page.getByRole('status').filter({hasText:'1 published records'}).waitFor();
   await page.goto(frontend+'/schemes/'+ids.svamitva);await page.getByRole('heading',{name:'Agenda and announcement',exact:true}).waitFor();assert.equal(await page.getByRole('link',{name:'Apply on official portal',exact:true}).count(),0);await page.getByText('2026-11-20',{exact:true}).waitFor();
   await page.goto(frontend+'/schemes/'+ids['pension-en']);await page.getByText('2026-11-27',{exact:true}).waitFor();await page.getByText('2026-12-04',{exact:true}).waitFor();await page.getByText('Hearing time unspecified',{exact:true}).waitFor();
@@ -59,7 +69,7 @@ async function main(){
   const editable=await call('/admin/schemes/'+ids['pension-en']+'/draft','POST',{},admin.token);await page.setViewportSize({width:390,height:844});await page.goto(frontend+'/admin/schemes?version='+editable.version_id);await page.getByRole('heading',{name:'Information type and structured details',exact:true}).waitFor();assert.equal(await page.getByLabel('Record type',{exact:true}).inputValue(),'public_notice');await fits();
   await page.goto(frontend+'/admin/sources');await page.getByRole('heading',{name:'Official source registry',exact:true}).waitFor();await page.getByText('Actual published coverage',{exact:true}).click();await fits();await page.screenshot({path:join(screenshots,'sources-mobile.png')});
   await page.setViewportSize({width:1440,height:1000});await page.goto(frontend+'/admin');await page.getByRole('heading',{name:'Administration',exact:true}).waitFor();await page.screenshot({path:join(screenshots,'admin-desktop.png')});
-  assert.deepEqual(errors,[]);console.log('PASS: real official record fixtures on desktop/mobile; separate Adalat dates and unknown time; event without Apply; chat citations; profile-prefilled editable draft; admin evidence and actual coverage. Screenshots: .data/records-ui');
+  assert.deepEqual(errors,[]);console.log('PASS: certificates section, filters, login-to-save, preserved legacy links and desktop/mobile navigation; real official record fixtures; separate Adalat dates and unknown time; event without Apply; chat citations; profile-prefilled editable draft; admin evidence and actual coverage. Screenshots: .data/records-ui');
  }finally{if(browser)await browser.close();vite.kill();await new Promise(done=>{server.close(done);server.closeAllConnections();});await closeDatabase();await rm(directory,{recursive:true,force:true});}
 }
 main().catch(error=>{console.error(error);process.exitCode=1});

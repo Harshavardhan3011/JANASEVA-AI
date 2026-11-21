@@ -4,6 +4,8 @@
 
 JANASEVA AI helps citizens find relevant government schemes, understand requirements, save useful results, and open official application portals. It combines public search, an AI-assisted question interface, personal preparation tracking, and administration of sources and discovery jobs.
 
+Certificate services have a separate public section at `/certificates`, with state, certificate-type and issuing-department filters. Published income, caste, birth, residence and other certificate services appear there automatically from the existing catalog. Cards and details show verified fees, processing times, documents and official application links. Certificate records are separated from the scheme listing; existing `/schemes/:id` certificate links redirect to `/certificates/:id` and retain their account save flow. This presentation change requires no migration or new environment variables and adds no placeholder production records.
+
 The shared catalogue also supports citizen services, public notices, recruitment/exams/results, rules and notifications, directories, helplines, grievance/RTI guidance, scheme updates, public events and official FAQs. Each type has the appropriate facts and actions: a hearing is not displayed as a new pension scheme, and a meeting does not receive an application button. See the [government information expansion and verification report](docs/government-records.md) for the implementation, tested official sources and production setup status.
 
 Missing scheme details now use field-specific official-source enrichment and a resumable backfill queue. Claims retain the actual source URL, quotation, source version and fingerprint; reviewed values survive reruns. See the [scheme enrichment report](docs/scheme-enrichment.md) for the root cause, real CSSS before/after, migration, commands and remaining production setup. The hosted CSSS record was backfilled; the other 33 records remain pending in the resumable queue, including retry states, rather than being represented as complete.
@@ -192,6 +194,7 @@ No source webhook connector is verified. All 36 State/UT filter options exist, b
 | --- | --- |
 | `/` | Public home/search. |
 | `/schemes`, `/schemes/:id` | Public listing and stable ID-based detail pages. |
+| `/certificates`, `/certificates/:id` | Separate certificate services, filters, documents, fees, processing times and official application links. |
 | `/ask` | Public assistant; personal actions require login. `/assistant` redirects here. |
 | `/login`, `/register` | Login/public registration. |
 | `/check-email`, `/verify-email` | Instructions, explicit verification, resend. |

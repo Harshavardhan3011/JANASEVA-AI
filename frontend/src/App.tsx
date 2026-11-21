@@ -42,6 +42,8 @@ export const App: React.FC = () => {
       <Route element={<SchemeLayout />}>
         <Route path="/schemes" element={<SchemesPage />} />
         <Route path="/schemes/:id" element={<SchemeDetailPage />} />
+        <Route path="/certificates" element={<SchemesPage key="certificates" section="certificates" />} />
+        <Route path="/certificates/:id" element={<SchemeDetailPage section="certificates" />} />
         <Route path="/ask" element={<AssistantPage />} />
         <Route path="/assistant" element={<LegacyAsk/>} />
       </Route>
