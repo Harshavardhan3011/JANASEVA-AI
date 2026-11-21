@@ -59,9 +59,10 @@ export async function runEnrichmentTasks(limit=3,schemeId?:string) {
    if(published){await finish('completed',draft,'published');counts.published++;}
    else {await finish('review',draft,'review');counts.review++;}
   }catch(error) {
+   const code=error instanceof Error?(error.cause as {code?:string}|undefined)?.code:undefined;
    counts.failed++;await db.query(`update public.scheme_enrichment_tasks set status=case when attempts>=5 then 'review' else 'failed' end,
     worker_token=null,lease_until=null,next_attempt_at=now()+interval '1 hour'*least(24,power(2,attempts)::integer),error=$3
-    where scheme_id=$1 and worker_token=$2`,[task.scheme_id,token,error instanceof Error?error.message.slice(0,400):'Official enrichment failed.']);
+    where scheme_id=$1 and worker_token=$2`,[task.scheme_id,token,error instanceof Error?(error.message+(code?' ('+code+')':'')).slice(0,400):'Official enrichment failed.']);
   }
   async function finish(status:string,version:Version,outcome:string) {
    await db.query(`update public.scheme_enrichment_tasks set status=$3,worker_token=null,lease_until=null,

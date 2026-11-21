@@ -36,6 +36,7 @@ test('official field enrichment backfills legacy CSSS in place, cites second sou
   // Keep paragraph boundaries from the PDF fixture for exact labelled extraction.
   const captured=await captureDocument(meta,fixture.primary);const generated=await import('../modules/catalog/catalog.repo').then(module=>module.generateVersion(captured.version.id));
   assert.equal(generated.status,'draft',generated.error || 'Generated');assert.equal(generated.enrichment_report?.fields.dates.status,'verified');
+  assert.match(generated.description!.benefits.map(row=>row.text).join(' '),/2022-\s*23\./,'A wrapped academic-year suffix remains in its benefit condition.');
   assert.equal(generated.description!.record!.dates.find(date=>date.kind==='application_deadline')!.value,'2026-11-30');
   assert.deepEqual(verifyDescription(generated.description!,generated.source_text,generated.evidence_sources).problems,[]);
   assert.equal(await publishVersion(generated.id,null),id);

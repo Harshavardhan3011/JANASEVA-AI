@@ -28,7 +28,8 @@ export function extractLabelledDetails(meta:ImportMetadata,document:SourceDocume
  if(!matchesSchemeName(text.slice(0,3500),meta))throw new Error('The source does not identify this scheme clearly enough for extraction.');
  const claim=(quote:string):Claim=>({text:compact(quote),quote});
  const chunks=(value:string)=>value.split(/\n\s*\n|\n\s*(?=[ivx]{1,5}\.\s)/).map(part=>part.trim()).filter(part=>part.length>=5 && compact(part).length<=1600).slice(0,10).map(claim);
- const headings=[...text.matchAll(/^\s*\d{1,2}\.\s+([^\n]{3,110})/gm)];
+ // Horizontal spacing only: a wrapped year ending in "23." is not a new numbered heading.
+ const headings=[...text.matchAll(/^[ \t]*\d{1,2}\.[ \t]+([A-Z][^\n]{2,109})/gm)];
  if(!headings.some(heading=>/^eligibility/i.test(heading[1])) && !(/^(www\.)?scholarships\.gov\.in$/.test(new URL(document.url).hostname) && new URL(document.url).pathname==='/All-Scholarships'))throw new Error('Set LLM_API_KEY for this source format; no reliable labelled guideline extraction was available.');
  for(let index=0;index<headings.length;index++) {
   const heading=headings[index],body=text.slice(heading.index!+heading[0].length,headings[index+1]?.index ?? text.length).trim();
@@ -143,7 +144,7 @@ export async function enrichDetails(meta:ImportMetadata,primary:SourceDocument,i
    if(filled.length || report.conflicts.length){const existing=sources.findIndex(source=>source.url===evidence.url && source.fingerprint===evidence.fingerprint);if(existing>=0)sources[existing]=evidence;else sources.push(evidence);}
    report.attempts.push({url:document.url,status:filled.length?'enriched':'checked',fields:filled,mode:outcome.mode,...(outcome.providerError?{reason:outcome.providerError}:{})});
    if(outcome.mode.includes('excerpts') && !report.mode.includes('excerpts'))report.mode='AI and labelled official excerpts';
-  }catch(error){const reason=error instanceof Error?error.message.slice(0,300):'Source verification failed.';report.attempts.push({url,status:'unverified',reason});if(/version.*incompatible|current application cycle needs review|Jurisdiction mismatch|variants need review/i.test(reason))report.conflicts.push('Scope verification needs review for '+url+'. Existing values were preserved.');}
+  }catch(error){const code=error instanceof Error?(error.cause as {code?:string}|undefined)?.code:undefined;const reason=error instanceof Error?(error.message+(code?' ('+code+')':'')).slice(0,300):'Source verification failed.';report.attempts.push({url,status:'unverified',reason});if(/version.*incompatible|current application cycle needs review|Jurisdiction mismatch|variants need review/i.test(reason))report.conflicts.push('Scope verification needs review for '+url+'. Existing values were preserved.');}
  }
  for(const field of enrichmentFields){const rows=claimsFor(description,field),verified=rows.length>0 && !missingFields(description).includes(field);report.fields[field]={status:verified?'verified':'unverified',sources:[...new Set(rows.map(row=>row.sourceUrl || primary.url))],note:verified?'Supported by captured official evidence.':'Not verified after checking available official sources.'};}
  if(report.conflicts.length)description.reviewIssues=[...description.reviewIssues,...report.conflicts].slice(0,12);

@@ -10,6 +10,8 @@ The NSP reader had another problem: it selected the first `<main>` (navigation),
 
 Previously every citation linked to the primary URL, and an admin revision copied the description without supplemental evidence. Both paths now preserve and display the actual field's evidence.
 
+The final production visual check also caught a PDF heading-boundary bug: a wrapped year ending in `23.` could be treated as a numbered heading, dropping the end of a historical benefit exception. Headings now require horizontal spacing and a same-line title. The full `2022–23` condition was restored from the exact captured source in a guarded new published revision; the previous version remains in history. A regression checks the complete suffix.
+
 ## Implemented flow
 
 1. Fetch the approved primary source server-side using the existing robots, public-DNS, redirect, timeout, pacing and size checks.
@@ -48,9 +50,13 @@ Additional diagnosis: the Ministry FAQ URL returned 404 and the Ministry landing
 
 The live fetch was processed through the actual application backfill, publication, database and API in an isolated database, followed by desktop/mobile page loads and reloads. A second pass skipped the same record and retained its published version. The validated source-only result was then applied to the hosted existing record in a guarded transaction via the database connector; the transaction refused to overwrite any concurrent detail revision. This connector replay is **not evidence of a successful deployed background run**.
 
-Hosted result: **1 backfilled, 33 queued**, still 34 schemes and 6 accounts. A subsequent request to the deployed public API returned HTTP 200 with benefits, nine eligibility clauses, one confirmed document requirement, seven application steps, dates, contacts and the NSP deadline citation. No demo accounts or records were added to production.
+Initial hosted result: **1 backfilled, 33 queued**, still 34 schemes and 6 accounts. A subsequent request to the deployed public API returned HTTP 200 with benefits, nine eligibility clauses, one confirmed document requirement, seven application steps, dates, contacts and the NSP deadline citation. No demo accounts or records were added to production.
 
 After the CA fix, production run `44879222890` connected and attempted three queued records. It preserved all published data and recorded three retryable failures: a source timeout, an unapproved legacy URL, and an unavailable model (HTTP 404). At that checkpoint the other-record queue contained 30 queued and three failed/retry records. The provider-failure fallback and model variable mapping were added after this diagnostic run.
+
+Final production check: [run 44879914137](https://github.com/Harshavardhan3011/JANASEVA-AI/actions/runs/44879914137) executed with **`janaseva_ingestor`**, fetched and extracted the CSSS guideline, recorded the model's HTTP 404 and used the labelled-excerpt fallback. The NSP supporting listing could not be fetched from that runner. The task failed safely and retained the existing published version and its verified deadline. There is still exactly one CSSS record. Thus worker execution, scoped identity, durable failure reporting and production outage preservation are verified; a successful complete unattended source refresh is not. No successful production model generation is claimed. The other 33 records remain pending: 30 queued and three awaiting retry; CSSS separately has a failed recheck while its published detail remains available.
+
+The deployed public CSSS page was also opened in a real browser and reloaded: eligibility, the confirmed document requirement, benefits and the deadline were visible without browser errors. A transient first navigation timed out; a fresh navigation and subsequent verification succeeded. The per-field source UI can be deployed independently by Vercel, while Render still needs the new API commit for enrichment status and API-triggered processing.
 
 ## Migration and operation
 
@@ -93,4 +99,4 @@ npm run test:records-ui
 
 The 17 backend tests passed, including second-source citations, unrelated scheme-card exclusion, wrong citation rejection, reviewed-value preservation, conflict retention, in-place reruns, source outages and scoped-worker permissions. The live CSSS browser test passed at desktop/mobile sizes after reload. Its before/after JSON and screenshots are written under `.data/enrichment-ui` and are not committed. CI can omit `--live` to replay captured official evidence without external access.
 
-Remaining gaps: the other 33 records are queued, not claimed as enriched. Fees and definitive application status for CSSS remain unknown. A complete current-cycle document list may require another compatible official source. Live model generation was not verified because no local model credential was available; the live test used the transparent extractive fallback. Successful unattended production processing and deployment of the new UI remain unverified until the worker is configured and the code deployed.
+Remaining gaps: the other 33 records are not claimed as enriched. Fees and definitive application status for CSSS remain unknown. A complete current-cycle document list may require another compatible official source. Local live-source verification used the transparent extractive fallback. The production model attempt returned HTTP 404; source formats outside that fallback need an available configured model. The NSP listing must become reachable from the worker before its failed CSSS recheck can complete. The enhanced frontend and API still need deployment. Source failures remain queued for bounded retries; they do not empty published pages.
