@@ -11,7 +11,7 @@ async function main() {
  const limit=Number(process.argv.find(value=>value.startsWith('--limit='))?.slice(8) || 3);
  if(!Number.isInteger(limit) || limit<1 || limit>100)throw new Error('Use --limit=1 through --limit=100.');
  const serviceRole=(await (await database()).query('select current_user as role')).rows[0].role;
- const queued=await enqueueBackfill(schemeId,process.argv.includes('--retry')),counts=await runEnrichmentTasks(limit);
+ const queued=await enqueueBackfill(schemeId,process.argv.includes('--retry')),counts=await runEnrichmentTasks(limit,schemeId);
  console.log(JSON.stringify({serviceRole,queued,counts}));
  if(counts.failed)process.exitCode=1;
  }finally {await closeDatabase();}

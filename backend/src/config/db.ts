@@ -13,16 +13,21 @@ type Storage = Database & { close():Promise<void>; transaction<T>(work: (tx: Dat
 async function connect(): Promise<Storage> {
   if (env.DATABASE_URL || (env.SCHEME_SYNC_WORKER && env.INGESTION_DATABASE_URL)) {
     const pool = new pg.Pool({ connectionString: (env.SCHEME_SYNC_WORKER?env.INGESTION_DATABASE_URL:'') || env.DATABASE_URL, max: 5,
-      options: '-c search_path=public,extensions'+(env.SCHEME_SYNC_WORKER?' -c role=janaseva_ingestor':''), connectionTimeoutMillis: 10000 });
-    await pool.query(env.SCHEME_SYNC_WORKER?'select 1 from public.scheme_catalog_sources limit 1':'select 1 from public.citizen_sessions limit 1');
-    if(env.SCHEME_SYNC_WORKER){const {rows:[identity]}=await pool.query('select current_user as role');if(identity.role!=='janaseva_ingestor'){await pool.end();throw new Error('The restricted ingestion role was not activated. Check database role membership.');}}
-    return {
-      query: (sql, params) => pool.query(sql, params),
+      options: '-c search_path=public,extensions', connectionTimeoutMillis: 10000 });
+    const remote:Storage={
+      // Poolers can discard startup role options. SET LOCAL inside BEGIN is effective
+      // for session and transaction poolers, and resets before the connection is reused.
+      query: (sql,params)=>env.SCHEME_SYNC_WORKER?remote.transaction(tx=>tx.query(sql,params)):pool.query(sql,params),
       close: () => pool.end(),
       async transaction(work) {
         const client = await pool.connect();
         try {
           await client.query('begin');
+          if(env.SCHEME_SYNC_WORKER){
+            await client.query('set local role janaseva_ingestor');
+            const {rows:[identity]}=await client.query('select current_user as role');
+            if(identity.role!=='janaseva_ingestor')throw new Error('The restricted ingestion role was not activated. Check database role membership.');
+          }
           const result = await work(client);
           await client.query('commit');
           return result;
@@ -34,6 +39,9 @@ async function connect(): Promise<Storage> {
         }
       },
     };
+    try{await remote.query(env.SCHEME_SYNC_WORKER?'select 1 from public.scheme_catalog_sources limit 1':'select 1 from public.citizen_sessions limit 1');}
+    catch(error){await pool.end();throw error;}
+    return remote;
   }
   await mkdir(env.DATA_DIR, { recursive: true });
   const local = new PGlite(join(env.DATA_DIR, 'postgres'), { extensions: { vector } });

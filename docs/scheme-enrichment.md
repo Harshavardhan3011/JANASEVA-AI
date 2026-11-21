@@ -72,6 +72,8 @@ npm run schemes:backfill -- --scheme=518d8549-a22c-45bd-8a19-1484b42b30bd --retr
 
 The CLI forces the restricted ingestion identity. Use a login permitted to assume `janaseva_ingestor`. Repeating a completed record requires `--retry` or its next due check; interrupted/pending work resumes automatically. The API/admin queue shares the deployed daily discovery workflow and the running API's scheduled wakeups.
 
+Run `44879686953` exposed the pooler's ignored startup-role option. The fail-closed identity check stopped the worker before queue access. Worker queries now execute inside a transaction with `SET LOCAL ROLE janaseva_ingestor` and verify `current_user` before work, covering both session and transaction poolers. The optional CLI scheme selector also constrains the claimed task, not just the enqueued task.
+
 Production run `44878911861` built successfully but stopped before reading the queue because the database URL referenced a runner-local CA file that did not exist. Both workflows now install the public Supabase Root 2021 CA from Supabase's download host, verify its pinned SHA-256 fingerprint and expiry, and provide the expected file. TLS verification remains enabled. A future CA rotation must be reviewed before updating the pin. See [Supabase SSL guidance](https://supabase.com/docs/guides/platform/ssl-enforcement).
 
 Relevant configuration **names only**: `DATABASE_URL`, optional `INGESTION_DATABASE_URL`, `SCHEME_ENRICHMENT_ENABLED`, `SCHEME_CATALOG_ENABLED`, `SCHEME_CATALOG_AUTO_PUBLISH`, `LLM_PROVIDER`, `LLM_MODEL`, `LLM_API_KEY`, `TAVILY_API_KEY` or `SCHEME_SEARCH_API_KEY`.
