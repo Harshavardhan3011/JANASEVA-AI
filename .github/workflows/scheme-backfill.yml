@@ -36,6 +36,8 @@ jobs:
           package-manager-cache: false
       - run: npm ci --prefix backend
       - run: npm --prefix backend run build
+      - name: Install verified Supabase database CA
+        run: node .github/scripts/install-supabase-ca.cjs
       - name: Resume official field enrichment
         shell: bash
         run: |
@@ -45,6 +47,7 @@ jobs:
           npm run schemes:backfill -- "${args[@]}"
         env:
           NODE_ENV: production
+          NODE_EXTRA_CA_CERTS: /tmp/supabase-ca.crt
           SCHEME_SYNC_WORKER: 'true'
           SCHEME_ENRICHMENT_ENABLED: 'true'
           DATABASE_URL: ${{ secrets.JANASEVA_DATABASE_URL }}

@@ -26,10 +26,13 @@ jobs:
           package-manager-cache: false
       - run: npm ci --prefix backend
       - run: npm --prefix backend run build
+      - name: Install verified Supabase database CA
+        run: node .github/scripts/install-supabase-ca.cjs
       - name: Check official sources using the shared production database
         run: npm run schemes:sync
         env:
           NODE_ENV: production
+          NODE_EXTRA_CA_CERTS: /tmp/supabase-ca.crt
           SCHEME_SYNC_WORKER: 'true'
           DATABASE_URL: ${{ secrets.JANASEVA_DATABASE_URL }}
           INGESTION_DATABASE_URL: ${{ secrets.JANASEVA_INGESTION_DATABASE_URL }}
