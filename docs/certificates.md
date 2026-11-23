@@ -1,43 +1,49 @@
-# Certificate directory and guides
+# Certificate requirements and state selection
 
-Implemented 21 November 2026. The live API probe returned HTTP 200 for both readiness and `/api/v1/schemes?type=citizen_service`, with an empty certificate array. The screenshot alone does not identify the earlier transport failure. Previously the entire page depended on this API and had no directory content. The updated page keeps a bundled public directory visible, shows catalog errors separately, and offers a retry. It preserves existing catalog IDs, saved records, login redirects and account permissions.
+Updated 23 November 2026.
 
-## Coverage
+## Root cause and fix
 
-27 categories: income, caste/community, residence/domicile/nativity, EWS, OBC/non-creamy layer, birth, death, marriage, disability/UDID, pensioner life, legal heir/surviving family, minority, nationality/citizenship, police clearance/character, bonafide/study, transfer, migration, degree/provisional/marks, land ownership/possession, encumbrance, farmer/agriculturist, solvency, unmarried/no impediment, medical fitness, vaccination, name change/gazette, and business/establishment registration.
+The generic `/certificates/guides/income` page previously used its slug as the only guide lookup. Changing State/UT updated a government homepage link, but never selected `ap-income` or any other state guide. Consequently the page displayed empty generic fields even when official local details existed. The AP guide itself also omitted documented eligibility, charges and service targets.
 
-31 entries include six source guides and general directory entries. These categories are discovery aids: not every state issues every certificate, and a registration service is not necessarily a certificate application. All 36 state/UT government homepages are included as directory links, not asserted to be direct service forms. Services India and ServicePlus are additional discovery links. These directories timed out or returned a gateway error during this check; they are not counted as successfully verified service guides.
+The guide page now resolves certificate kind + state + explicit district. The selector sits before the details. The generic income URL with `?state=Andhra%20Pradesh` renders the APSeva procedure and survives reload. Switching to Telangana replaces the checklist and removes AP fees. District-only guidance is offered as an explicit link rather than silently applied to a whole state. Direct legacy source-guide URLs still work.
 
-## Source guides actually opened and read
+The listing groups by certificate kind and prioritizes available official guidance. Types awaiting detailed local sources are optional, clearly labelled entries. Unsupported jurisdictions have one coverage message and available-guide choices rather than a full page of empty eligibility, document, fee, contact and date sections. Annual application dates are not invented for ongoing certificate services.
 
-| Guide | Official evidence | Fields supported |
-| --- | --- | --- |
-| UDID disability | https://depwd.gov.in/en/udid-scheme/ | Eligibility, documents, assessment/application steps, NIL fee, official portal |
-| Jeevan Pramaan | https://jeevanpramaan.gov.in/v1.0/misc/faq | Eligible pension authorities/exclusions, identity/pension information, assisted authentication, Pramaan ID and tracking |
-| Nandyal integrated caste | https://nandyal.ap.gov.in/service/caste-certificate/ | Community coverage, document list, MeeSeva/Sachivalayam channel; page last updated July 2025 |
-| APSeva income | https://apseva.ap.gov.in/assets/User-Manuals/EoDB%20SOP%20final.pdf#page=4 | Income evidence and identity alternatives, APSeva submission, revenue verification, tracking/download |
-| APSeva birth | Same PDF, page 2 | Submission, registrar verification, tracking/download |
-| APSeva death | Same PDF, page 3 | Submission, registrar verification, tracking/download |
+## Current coverage
 
-Read on 21 November 2026. A source-read date does not prove a current open application window. The AP manual's old fees and turnaround targets are deliberately not presented as current verified charges. “NA” in a document table is not interpreted as proof that no documents are required. Missing dates, contact details and processing times remain unknown. Nandyal instructions remain district-specific. The old HTTP MeeSeva link is not promoted as a verified direct application button.
+27 categories, 41 reference entries, 16 source-backed guides. Local evidence is available for six states/UTs, with Karnataka and Maharashtra currently represented by district-specific guides. National UDID and Jeevan Pramaan guides remain nationwide. Links to 36 state/UT homepages are directory fallbacks, not verified local service coverage.
 
-Other checked candidates: Bihar ServicePlus, UDID portal root, CRS, ServicePlus service list and West Bengal EWS timed out; MEA PCC returned 403; Uttarakhand EWS returned 404. An outdated Karnal page mixed birth/death instructions; its requirements were not imported. None of these failures authorize copying snippets or guessing requirements.
+| Official source actually opened/read | Guidance included |
+| --- | --- |
+| [APSeva citizen-service SOP](https://apseva.ap.gov.in/assets/User-Manuals/EoDB%20SOP%20final.pdf) | Income, birth, death, integrated community/nativity/DOB, Hindu marriage, encumbrance. Page-specific links support documents, issuer, documented fees, service targets and steps. |
+| [Nandyal caste service](https://nandyal.ap.gov.in/service/caste-certificate/) | Separate district checklist; not substituted for statewide APSeva rules. |
+| [Telangana income form](https://www.telangana.gov.in/wp-content/uploads/2023/03/IncomeGeneralApplicationForm.pdf#page=2), [MeeSeva forms](https://www.telangana.gov.in/services/meeseva-services/) and [FAQ](https://www.mgov.telangana.gov.in/faqnew.html) | Scanned PDF page 2 was downloaded, rendered with Poppler and visually read. Preserves the paper-form exception for Citizen Login, identity alternatives, income evidence and photograph. No unsupported current fee was copied from an old charter. |
+| [Delhi Revenue income](https://revenue.delhi.gov.in/revenue/income-certificate) and [alternative offline guidance](https://revenue.delhi.gov.in/revenue/income-certificate-0) | Checklist, no application fee, area SDM/DC channel. Conflicting 14/21-day response times and checklist variants are explicitly flagged. |
+| [Delhi domicile](https://revenue.delhi.gov.in/revenue/domicile-certificate) and [legacy guidance](https://revenue.delhi.gov.in/revenue/domicile-certificate-0) | Form/declaration, identity, three-year residence evidence, DOB proof, attestation, no application fee, official e-District route. |
+| [Goa income](https://goaonline.gov.in/Appln/UIL/DeptServices?__DocId=REV&__ServiceId=REV07) | Purpose-specific documents, online registration/submission/tracking, one-day documented target and helpdesk. Conditional documents retain their conditions. |
+| [Goa birth retrieval](https://goaonline.gov.in/Appln/Uil/DeptServices?__DocId=PSE&__ServiceId=PSE03) | Births registered from 1971 onward only. Preserves this service’s explicit no-supporting-documents statement; does not generalize to new/delayed birth registration. |
+| [Tumakuru income](https://tumkur.nic.in/en/service/apply-for-income-certificate/) | District checklist, online/in-person route, documented charge; 21 days is labelled as the in-person target. |
+| [Satara income](https://www.satara.gov.in/en/service/income-certificate/) | District checklist, mandatory declaration, conditional age/medical evidence, Aaple Sarkar service link and appeal officers. The table’s unlabelled time unit is not inferred. |
+| [DEPwD UDID](https://depwd.gov.in/en/udid-scheme/) | National disability eligibility, documents, medical assessment, NIL fee and portal. |
+| [Jeevan Pramaan FAQ](https://jeevanpramaan.gov.in/v1.0/misc/faq) | Pension-authority eligibility, exclusions, identity/pension details, authentication, Pramaan ID and tracking. |
 
-## Implementation and AI access
+New and expanded guides were checked on 23 November 2026. Existing national and Nandyal guides retain their actual earlier check dates in the dataset. A read date is not a guarantee of an open application window or a live portal fee. SOP charges and targets are attributed to that document and can be superseded. The AP birth/death SOP says NA in its checklist but mentions uploads in the procedure; that ambiguity is explained rather than treating NA as proof that no documents are necessary.
 
-`backend/src/modules/schemes/certificate-directory.json` is the public reference dataset. `frontend/src/data/certificate-directory.json` is its checked-in public snapshot so frontend-only Vercel builds need no files outside their project root. Backend tests enforce exact parity; copy the dataset to the frontend snapshot when changing guides. Source guides list supporting URLs and the fields each source supports. This curated directory is kept separate from database-published records and cannot overwrite reviewed catalog values.
+Kerala e-District, Tamil Nadu eSevai and other candidates were investigated; unavailable pages, access restrictions and incomplete source evidence were not turned into universal requirements. Complete detailed coverage of every certificate in every state is still pending.
 
-- `/certificates`: filtered directory plus published catalog records.
-- `/certificates/guides/:slug`: source guide or general navigation guide, state selector, official links, and Ask AI action. Direct links and refreshes work through the existing SPA rewrite.
-- `/certificates/:id`: existing published record, save/checklist support unchanged.
-- `GET /api/v1/schemes/certificate-directory`: machine-readable public guides and portal links; no database required.
-- Assistant: searches certificate titles/aliases and supplied/profile state; retrieves these source summaries and official URLs as evidence, returns guide links, and asks for state when needed. Existing published service answers now include documents and application steps that were previously omitted.
+## Implementation
 
-The assistant does not claim to visit every link live on each question. This directory does not add unrestricted outbound fetching or silently enable blocked sources. Existing approved-source discovery remains server-side. New complete service records still use the evidence-aware import/publishing pipeline. General directory entries have no fabricated application URL, document list, fee or verified date. Adding more detailed guides requires reading the exact official service source and recording its scope and evidence; merely adding a URL does not verify a service.
+- Canonical reference data: `backend/src/modules/schemes/certificate-directory.json`.
+- Frontend-only Vercel snapshot: `frontend/src/data/certificate-directory.json`; tests enforce exact parity.
+- `/certificates/guides/:slug` resolves jurisdiction locally; API outage cannot blank bundled guides.
+- `GET /api/v1/schemes/certificate-directory` returns the machine-readable public dataset without requiring a database.
+- The guide page additionally loads matching verified published records from `/schemes`, so discoveries subsequently published in the existing database remain reachable without a frontend redeploy.
+- The assistant retrieves the same state-scoped guides, excludes generic duplicates when a source guide exists, preserves source conflicts, and requires an explicit district before using district facts.
+- Existing database ingestion already includes certificate/service discovery topics. It remains server-side, official-host restricted and evidence-validated. This task does not enable unrestricted crawling, fabricate source records or overwrite reviewed catalog content.
+- Account data, saved items and existing record URLs are preserved. No schema migration or additional environment variable is required.
 
-## Setup and verification
-
-No schema migration, additional secret or environment variable is required. Build/deploy **both frontend and backend**. The frontend directory works with the existing API version; assistant guide retrieval needs this backend commit deployed. Render was inspected read-only and was not manually redeployed by this task.
+## Verification and deployment
 
 Commands:
 
@@ -48,10 +54,11 @@ npm run build
 npm test
 node docs/certificates-smoke.cjs
 node docs/records-smoke.cjs
+node docs/certificates-live.cjs
 ```
 
-The focused backend checks cover 36 jurisdictions, unique stable slugs, official HTTPS source hosts, unknown requirements, and preventing AP data from appearing as Telangana requirements. The browser check covers source-guide documents and application links, direct reload, desktop/mobile width, assistant retrieval without a model key, and directory availability during an aborted catalog request. The existing records smoke suite checks published-certificate filtering, legacy links, login-to-save and account flows. Only synthetic accounts and isolated local database fixtures are used; no demo data is inserted into production.
+Backend checks cover matching source documents, AP amounts and service targets, Telangana’s Citizen Login exception, source-link parity, duplicate suppression, district isolation and Delhi’s explicit conflict. Browser verification covers the screenshot’s generic-income → AP selection path, reload, switches to Telangana/Goa, explicit Tumakuru selection, unsupported-state empty behavior, mobile layout, assistant retrieval and API outage fallback. Test accounts and fixtures remain isolated from production.
 
-Local results: full build, typecheck and lint passed; all 18 backend tests passed; both the focused certificates browser check and existing records browser suite passed. The parity check also passed after moving the frontend snapshot inside its Vercel project root. Vite retains its existing bundle-size warning; the build succeeds.
+Deployment results are recorded after the production run is observed; a queued deploy is not reported as live. The live check uses public pages and one public assistant question, and does not create accounts, send emails or insert demo records.
 
-Remaining scope: service-specific instructions for every jurisdiction and category are not yet verified; 36 portal links do not imply that coverage. Production deployment and the updated deployed assistant must be checked after both services ship this commit.
+Local release checks passed: typecheck/build, lint, all 18 backend tests, the existing records browser suite and the focused certificates browser suite. The initial parallel browser startup timed out; the sequential release run passed. Production results follow after deployment.

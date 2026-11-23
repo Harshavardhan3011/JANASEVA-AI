@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "notice": "A directory entry is a starting point, not confirmation that every state issues that certificate. Source guides summarize the linked pages; current local rules must be checked. Missing fields are not inferred.",
+  "version": 2,
+  "notice": "Choose your state to load available official-source guidance. National services apply across India; district guides remain district-specific. Missing local requirements are not inferred.",
   "directories": [
     {
       "label": "Government Services Portal",
@@ -187,7 +187,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "income"
+      "kind": "income",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "caste",
@@ -220,7 +225,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "caste"
+      "kind": "caste",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "residence",
@@ -251,7 +261,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "residence"
+      "kind": "residence",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "ews",
@@ -282,7 +297,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "ews"
+      "kind": "ews",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "ncl",
@@ -315,7 +335,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "ncl"
+      "kind": "ncl",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "birth",
@@ -345,7 +370,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "birth"
+      "kind": "birth",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "death",
@@ -375,7 +405,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "death"
+      "kind": "death",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "marriage",
@@ -405,7 +440,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "marriage"
+      "kind": "marriage",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "disability",
@@ -454,7 +494,12 @@
         }
       ],
       "checkedOn": "2026-11-21",
-      "kind": "disability"
+      "kind": "disability",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "life",
@@ -502,7 +547,12 @@
         }
       ],
       "checkedOn": "2026-11-21",
-      "kind": "life"
+      "kind": "life",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "legal-heir",
@@ -534,7 +584,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "legal-heir"
+      "kind": "legal-heir",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "minority",
@@ -563,7 +618,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "minority"
+      "kind": "minority",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "nationality",
@@ -592,7 +652,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "nationality"
+      "kind": "nationality",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "police",
@@ -624,7 +689,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "police"
+      "kind": "police",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "bonafide",
@@ -654,7 +724,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "bonafide"
+      "kind": "bonafide",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "transfer",
@@ -685,7 +760,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "transfer"
+      "kind": "transfer",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "migration",
@@ -714,7 +794,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "migration"
+      "kind": "migration",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "degree",
@@ -746,7 +831,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "degree"
+      "kind": "degree",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "land",
@@ -777,7 +867,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "land"
+      "kind": "land",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "encumbrance",
@@ -807,7 +902,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "encumbrance"
+      "kind": "encumbrance",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "farmer",
@@ -837,7 +937,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "farmer"
+      "kind": "farmer",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "solvency",
@@ -867,7 +972,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "solvency"
+      "kind": "solvency",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "unmarried",
@@ -898,7 +1008,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "unmarried"
+      "kind": "unmarried",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "medical",
@@ -928,7 +1043,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "medical"
+      "kind": "medical",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "vaccination",
@@ -958,7 +1078,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "vaccination"
+      "kind": "vaccination",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "name-change",
@@ -988,7 +1113,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "name-change"
+      "kind": "name-change",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "business",
@@ -1019,7 +1149,12 @@
       "applicationUrl": null,
       "sources": [],
       "checkedOn": null,
-      "kind": "business"
+      "kind": "business",
+      "district": "",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "ap-nandyal-caste",
@@ -1070,7 +1205,12 @@
         }
       ],
       "checkedOn": "2026-11-21",
-      "kind": "caste"
+      "kind": "caste",
+      "district": "Nandyal",
+      "authority": null,
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     },
     {
       "slug": "ap-income",
@@ -1085,18 +1225,22 @@
       "state": "Andhra Pradesh",
       "scope": "Andhra Pradesh",
       "level": "source_guide",
-      "overview": "APSeva SOP guidance. Current fees and service availability require confirmation.",
-      "eligibility": [],
+      "overview": "Procedure published in the Andhra Pradesh APSeva citizen-service SOP.",
+      "eligibility": [
+        "Anyone requiring an income certificate."
+      ],
       "documents": [
         "IT returns / pay slips or other income proof",
         "Ration / EPIC / Aadhaar card"
       ],
       "steps": [
-        "Log into APSeva and select Income Certificate; complete the form and upload evidence.",
-        "Submit and retain the reference. Revenue officials verify; track the application and download after approval."
+        "Open APSeva Citizen Login and select Income Certificate.",
+        "Fill the form and upload income and identity evidence. Give any undertaking requested by the service.",
+        "Pay the displayed charge, submit and retain the application number. The VRO checks records and may inspect; the RI rechecks and the Tahsildar decides.",
+        "Track by application number. Download or print after approval."
       ],
-      "fees": null,
-      "processingTime": null,
+      "fees": "Official SOP: ₹12. Confirm the current charge before payment.",
+      "processingTime": "Official SOP service target: 7 days.",
       "contact": null,
       "applicationUrl": "https://vswsonline.ap.gov.in/#/home",
       "sources": [
@@ -1106,12 +1250,24 @@
           "supports": [
             "steps",
             "applicationUrl",
-            "documents"
+            "documents",
+            "overview",
+            "authority",
+            "eligibility",
+            "fees",
+            "processingTime"
           ]
         }
       ],
-      "checkedOn": "2026-11-21",
-      "kind": "income"
+      "checkedOn": "2026-11-23",
+      "kind": "income",
+      "district": "",
+      "authority": "Tahsildar / Deputy Tahsildar, Revenue Department",
+      "documentNote": null,
+      "notes": [
+        "Charges and targets come from the linked SOP; later amendments and current portal instructions can supersede them."
+      ],
+      "validity": null
     },
     {
       "slug": "ap-birth",
@@ -1125,15 +1281,17 @@
       "state": "Andhra Pradesh",
       "scope": "Andhra Pradesh",
       "level": "source_guide",
-      "overview": "APSeva SOP guidance. Current fees and service availability require confirmation.",
-      "eligibility": [],
+      "overview": "Procedure published in the Andhra Pradesh APSeva citizen-service SOP.",
+      "eligibility": [
+        "People seeking birth registration or a birth certificate."
+      ],
       "documents": [],
       "steps": [
         "Select Birth Certificate after APSeva Citizen Login; fill and submit the form.",
         "The registrar verifies; track with the application number and download after approval."
       ],
-      "fees": null,
-      "processingTime": null,
+      "fees": "Official SOP: ₹60. Confirm the current charge before payment.",
+      "processingTime": "Official SOP service target: 7 days.",
       "contact": null,
       "applicationUrl": "https://vswsonline.ap.gov.in/#/home",
       "sources": [
@@ -1142,12 +1300,25 @@
           "label": "APSeva official SOP · birth",
           "supports": [
             "steps",
-            "applicationUrl"
+            "applicationUrl",
+            "overview",
+            "authority",
+            "eligibility",
+            "fees",
+            "processingTime",
+            "documentNote"
           ]
         }
       ],
-      "checkedOn": "2026-11-21",
-      "kind": "birth"
+      "checkedOn": "2026-11-23",
+      "kind": "birth",
+      "district": "",
+      "authority": "Registrar of Births and Deaths, Municipal Corporation",
+      "documentNote": "The SOP table says NA, but its procedure mentions relevant uploads. It does not give a definitive checklist: check the service form or registrar before submitting.",
+      "notes": [
+        "Charges and targets come from the linked SOP; later amendments and current portal instructions can supersede them."
+      ],
+      "validity": null
     },
     {
       "slug": "ap-death",
@@ -1161,15 +1332,17 @@
       "state": "Andhra Pradesh",
       "scope": "Andhra Pradesh",
       "level": "source_guide",
-      "overview": "APSeva SOP guidance. Current fees and service availability require confirmation.",
-      "eligibility": [],
+      "overview": "Procedure published in the Andhra Pradesh APSeva citizen-service SOP.",
+      "eligibility": [
+        "People seeking to register a relative’s death."
+      ],
       "documents": [],
       "steps": [
         "Select Death Certificate after APSeva Citizen Login; complete and submit the form.",
         "The registrar verifies; track with the application number and download after approval."
       ],
-      "fees": null,
-      "processingTime": null,
+      "fees": "Official SOP: ₹60. Confirm the current charge before payment.",
+      "processingTime": "Official SOP service target: 7 days.",
       "contact": null,
       "applicationUrl": "https://vswsonline.ap.gov.in/#/home",
       "sources": [
@@ -1178,12 +1351,591 @@
           "label": "APSeva official SOP · death",
           "supports": [
             "steps",
+            "applicationUrl",
+            "overview",
+            "authority",
+            "eligibility",
+            "fees",
+            "processingTime",
+            "documentNote"
+          ]
+        }
+      ],
+      "checkedOn": "2026-11-23",
+      "kind": "death",
+      "district": "",
+      "authority": "Registrar of Births and Deaths, Municipal Corporation",
+      "documentNote": "The SOP table says NA, but its procedure mentions relevant uploads. It does not give a definitive checklist: check the service form or registrar before submitting.",
+      "notes": [
+        "Charges and targets come from the linked SOP; later amendments and current portal instructions can supersede them."
+      ],
+      "validity": null
+    },
+    {
+      "slug": "ap-caste",
+      "title": "Integrated community, nativity and date of birth certificate",
+      "department": "Revenue",
+      "aliases": [
+        "community",
+        "SC",
+        "ST",
+        "BC",
+        "integrated",
+        "caste"
+      ],
+      "state": "Andhra Pradesh",
+      "scope": "Andhra Pradesh",
+      "level": "source_guide",
+      "overview": "Statewide APSeva procedure for the integrated certificate.",
+      "eligibility": [
+        "AP citizens of BC, SC, ST and OC communities seeking the certificate for welfare, scholarships or fee reimbursement."
+      ],
+      "documents": [
+        "SSC marks memo, transfer certificate or municipal / Gram Panchayat birth extract",
+        "Earlier caste certificate of applicant, parents or family, wherever applicable"
+      ],
+      "steps": [
+        "Sign in to APSeva and select Integrated Certificate.",
+        "Upload evidence and submit the form and any requested undertaking.",
+        "VRO and RI verify; Tahsildar or RDO decides as applicable.",
+        "Track on APSeva and download after approval."
+      ],
+      "fees": "SOP: ₹12; confirm the current portal charge.",
+      "processingTime": "SOP target: 30 days.",
+      "contact": null,
+      "applicationUrl": "https://vswsonline.ap.gov.in/#/home",
+      "sources": [
+        {
+          "url": "https://apseva.ap.gov.in/assets/User-Manuals/EoDB%20SOP%20final.pdf#page=5",
+          "label": "APSeva SOP · Integrated Certificate",
+          "supports": [
+            "overview",
+            "authority",
+            "eligibility",
+            "documents",
+            "documentNote",
+            "steps",
+            "fees",
+            "processingTime",
             "applicationUrl"
           ]
         }
       ],
-      "checkedOn": "2026-11-21",
-      "kind": "death"
+      "checkedOn": "2026-11-23",
+      "kind": "caste",
+      "district": "",
+      "authority": "Tahsildar (MRO) / Revenue Divisional Officer (RDO)",
+      "documentNote": null,
+      "notes": [],
+      "validity": null
+    },
+    {
+      "slug": "ap-marriage",
+      "title": "Hindu marriage registration certificate",
+      "department": "Civil registration",
+      "aliases": [
+        "marriage",
+        "registration",
+        "spouse"
+      ],
+      "state": "Andhra Pradesh",
+      "scope": "Andhra Pradesh",
+      "level": "source_guide",
+      "overview": "APSeva Hindu marriage procedure; other marriage-law routes are separate services.",
+      "eligibility": [
+        "Hindu married couples seeking a Hindu marriage certificate."
+      ],
+      "documents": [
+        "Wedding invitation",
+        "Date-of-birth evidence for both spouses using the SOP alternatives",
+        "Marriage photograph",
+        "Residence evidence for both spouses"
+      ],
+      "steps": [
+        "Sign in to APSeva and choose Marriage Certificate.",
+        "Fill the form, upload evidence and submit any requested undertaking.",
+        "Keep the receipt; the Sub-Registrar verifies and decides.",
+        "Download or print after approval."
+      ],
+      "fees": "SOP: ₹212 same-caste; ₹12 inter-caste. Confirm the current applicable charge.",
+      "processingTime": "SOP: 7 days for first issue; 15 minutes for subsequent issues.",
+      "contact": null,
+      "applicationUrl": "https://vswsonline.ap.gov.in/#/home",
+      "sources": [
+        {
+          "url": "https://apseva.ap.gov.in/assets/User-Manuals/EoDB%20SOP%20final.pdf#page=6",
+          "label": "APSeva SOP · Hindu Marriage Certificate",
+          "supports": [
+            "overview",
+            "authority",
+            "eligibility",
+            "documents",
+            "documentNote",
+            "steps",
+            "fees",
+            "processingTime",
+            "applicationUrl"
+          ]
+        }
+      ],
+      "checkedOn": "2026-11-23",
+      "kind": "marriage",
+      "district": "",
+      "authority": "Sub-Registrar, Registration and Stamps Department",
+      "documentNote": null,
+      "notes": [],
+      "validity": null
+    },
+    {
+      "slug": "ap-encumbrance",
+      "title": "Encumbrance certificate",
+      "department": "Registration",
+      "aliases": [
+        "EC",
+        "property",
+        "encumbrance"
+      ],
+      "state": "Andhra Pradesh",
+      "scope": "Andhra Pradesh",
+      "level": "source_guide",
+      "overview": "APSeva property transaction-history certificate procedure.",
+      "eligibility": [
+        "People requiring a property’s sale and purchase history."
+      ],
+      "documents": [],
+      "steps": [
+        "Sign in to APSeva and select Encumbrance Certificate.",
+        "Enter the application and land details; complete any undertaking requested.",
+        "Review the Registration Department history displayed, then download or print."
+      ],
+      "fees": "SOP: ₹210; confirm the current portal charge.",
+      "processingTime": "SOP: same day if applied before 2pm, or 3 days.",
+      "contact": null,
+      "applicationUrl": "https://vswsonline.ap.gov.in/#/home",
+      "sources": [
+        {
+          "url": "https://apseva.ap.gov.in/assets/User-Manuals/EoDB%20SOP%20final.pdf#page=11",
+          "label": "APSeva SOP · Encumbrance Certificate",
+          "supports": [
+            "overview",
+            "authority",
+            "eligibility",
+            "documents",
+            "documentNote",
+            "steps",
+            "fees",
+            "processingTime",
+            "applicationUrl"
+          ]
+        }
+      ],
+      "checkedOn": "2026-11-23",
+      "kind": "encumbrance",
+      "district": "",
+      "authority": "Sub-Registrar Office",
+      "documentNote": "The SOP lists NA for documents; the application still requires land details.",
+      "notes": [],
+      "validity": null
+    },
+    {
+      "slug": "ts-income",
+      "title": "Income certificate",
+      "department": "Revenue",
+      "aliases": [
+        "income",
+        "annual",
+        "family",
+        "income"
+      ],
+      "state": "Telangana",
+      "scope": "Telangana",
+      "level": "source_guide",
+      "overview": "General income-certificate checklist from Telangana’s official application form.",
+      "eligibility": [],
+      "documents": [
+        "Application form: marked not mandatory for Citizen Login",
+        "Ration card, Aadhaar card or EPIC card",
+        "IT returns, pay slips, income proof or affidavit",
+        "Passport-size photograph"
+      ],
+      "steps": [
+        "Open the official MeeSeva services directory and choose Income General Application Form.",
+        "Prepare the page-2 checklist; a separate paper application is not mandatory for Citizen Login.",
+        "Use the official MeeSeva channel or take the form and evidence to a MeeSeva centre. Confirm the current charge.",
+        "Keep the acknowledgement and complete the department’s verification requirements."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": "Nearest MeeSeva office / franchisee for unclear service requirements.",
+      "applicationUrl": "https://ts.meeseva.telangana.gov.in/",
+      "sources": [
+        {
+          "url": "https://www.telangana.gov.in/wp-content/uploads/2023/03/IncomeGeneralApplicationForm.pdf#page=2",
+          "label": "Telangana · Income General Application Form, page 2",
+          "supports": [
+            "documents"
+          ]
+        },
+        {
+          "url": "https://www.telangana.gov.in/services/meeseva-services/",
+          "label": "Telangana · MeeSeva services and forms",
+          "supports": [
+            "overview",
+            "authority",
+            "steps",
+            "applicationUrl"
+          ]
+        },
+        {
+          "url": "https://www.mgov.telangana.gov.in/faqnew.html",
+          "label": "Telangana · MeeSeva FAQ",
+          "supports": [
+            "contact"
+          ]
+        }
+      ],
+      "checkedOn": "2026-11-23",
+      "kind": "income",
+      "district": "",
+      "authority": "Revenue Department / MeeSeva",
+      "documentNote": null,
+      "notes": [],
+      "validity": null
+    },
+    {
+      "slug": "delhi-income",
+      "title": "Income certificate",
+      "department": "Revenue",
+      "aliases": [
+        "income",
+        "annual",
+        "family",
+        "income"
+      ],
+      "state": "Delhi",
+      "scope": "Delhi",
+      "level": "source_guide",
+      "overview": "Delhi Revenue Department’s published income-certificate procedure.",
+      "eligibility": [],
+      "documents": [
+        "Completed form and prescribed self-declaration",
+        "Aadhaar, or PAN / passport / driving licence / voter card if Aadhaar is unavailable",
+        "Current residence evidence",
+        "Family income evidence such as salary slips",
+        "Monthly expenditure evidence; applicant photograph captured at submission or verification"
+      ],
+      "steps": [
+        "Prepare the form, self-declaration and supporting evidence.",
+        "Apply through official e-District, or approach the area SDM / Deputy Commissioner.",
+        "Complete required attestation and verification; retain the acknowledgement for tracking."
+      ],
+      "fees": "The service page states no application fee.",
+      "processingTime": "Official conflict: one departmental page says 14 days, another 21 days. Confirm the applicable target with the SDM.",
+      "contact": "Area SDM / Deputy Commissioner; the service page lists 10am–1pm on working days.",
+      "applicationUrl": "https://edistrict.delhigovt.nic.in/",
+      "sources": [
+        {
+          "url": "https://revenue.delhi.gov.in/revenue/income-certificate",
+          "label": "Delhi Revenue · Income Certificate",
+          "supports": [
+            "overview",
+            "authority",
+            "documents",
+            "documentNote",
+            "steps",
+            "fees",
+            "processingTime",
+            "contact",
+            "applicationUrl"
+          ]
+        },
+        {
+          "url": "https://revenue.delhi.gov.in/revenue/income-certificate-0",
+          "label": "Delhi Revenue · alternative offline guidance",
+          "supports": [
+            "documentNote",
+            "processingTime"
+          ]
+        }
+      ],
+      "checkedOn": "2026-11-23",
+      "kind": "income",
+      "district": "",
+      "authority": "Area SDM / Deputy Commissioner",
+      "documentNote": "This service page requires Gazetted Officer attestation; an alternative departmental page describes a different offline checklist. Confirm your submission-channel checklist.",
+      "notes": [
+        "Different checklists and response times on two official pages remain flagged, not merged into a guaranteed rule."
+      ],
+      "validity": null
+    },
+    {
+      "slug": "delhi-residence",
+      "title": "Domicile certificate",
+      "department": "Revenue",
+      "aliases": [
+        "domicile",
+        "nativity",
+        "local",
+        "resident"
+      ],
+      "state": "Delhi",
+      "scope": "Delhi",
+      "level": "source_guide",
+      "overview": "Delhi Revenue Department’s domicile-certificate guidance.",
+      "eligibility": [],
+      "documents": [
+        "Application and prescribed self-declaration (adult declaration for a minor)",
+        "Aadhaar or listed alternative identity evidence; photograph",
+        "Current residence evidence and birth / school / passport evidence of date of birth",
+        "Proof of continuous Delhi residence for the last 3 years",
+        "Contact details and identity copy of the attesting Class-I Gazetted Officer"
+      ],
+      "steps": [
+        "Prepare the form, declaration, residence history and required attestation.",
+        "Use e-District or visit the area SDM / Deputy Commissioner.",
+        "Keep the acknowledgement and complete any further verification."
+      ],
+      "fees": "The service page states no application fee.",
+      "processingTime": null,
+      "contact": "Area SDM / Deputy Commissioner; service-page hours: 10am–1pm on working days.",
+      "applicationUrl": "https://edistrict.delhigovt.nic.in/",
+      "sources": [
+        {
+          "url": "https://revenue.delhi.gov.in/revenue/domicile-certificate",
+          "label": "Delhi Revenue · Domicile Certificate",
+          "supports": [
+            "overview",
+            "authority",
+            "documents",
+            "steps",
+            "fees",
+            "contact",
+            "applicationUrl",
+            "notes"
+          ]
+        },
+        {
+          "url": "https://revenue.delhi.gov.in/revenue/domicile-certificate-0",
+          "label": "Delhi Revenue · alternative domicile guidance",
+          "supports": [
+            "notes"
+          ]
+        }
+      ],
+      "checkedOn": "2026-11-23",
+      "kind": "residence",
+      "district": "",
+      "authority": "Area SDM / Deputy Commissioner",
+      "documentNote": null,
+      "notes": [
+        "The service page states 14 days, but separate legacy guidance states 21 days. Confirm the current target locally."
+      ],
+      "validity": null
+    },
+    {
+      "slug": "goa-income",
+      "title": "Income certificate",
+      "department": "Revenue",
+      "aliases": [
+        "income",
+        "annual",
+        "family",
+        "income"
+      ],
+      "state": "Goa",
+      "scope": "Goa",
+      "level": "source_guide",
+      "overview": "Goa Online Revenue income-certificate service.",
+      "eligibility": [],
+      "documents": [
+        "Photograph; self-attested age, identity and residence evidence (at least one each)",
+        "Marriage certificate for married, divorced or widowed women",
+        "Self-declaration for Mediclaim, Griha Aadhar or toilet construction/repair",
+        "Hospital certificate for Mediclaim; income / salary certificate for Griha Aadhar",
+        "Stamp-paper affidavit for EWS purpose"
+      ],
+      "steps": [
+        "Register on Goa Online with personal details, email/mobile and OTP; sign in.",
+        "Choose Services → All Services → Revenue → Income Certificate; enter purpose, residence and family income.",
+        "Upload applicable evidence, pay the displayed charge and keep the SMS/email acknowledgement.",
+        "Respond to compliance queries; download from your inbox after approval."
+      ],
+      "fees": null,
+      "processingTime": "Service page: one day under the time-bound services framework.",
+      "contact": "+91-8882988000; services.goa@gov.in (portal helpdesk)",
+      "applicationUrl": "https://goaonline.gov.in/Appln/UIL/DeptServices?__DocId=REV&__ServiceId=REV07",
+      "sources": [
+        {
+          "url": "https://goaonline.gov.in/Appln/UIL/DeptServices?__DocId=REV&__ServiceId=REV07",
+          "label": "Goa Online · Revenue Income Certificate",
+          "supports": [
+            "overview",
+            "authority",
+            "documents",
+            "steps",
+            "processingTime",
+            "contact",
+            "applicationUrl"
+          ]
+        }
+      ],
+      "checkedOn": "2026-11-23",
+      "kind": "income",
+      "district": "",
+      "authority": "Mamlatdar; appeal to Deputy Collector / Sub-Divisional Officer",
+      "documentNote": null,
+      "notes": [],
+      "validity": null
+    },
+    {
+      "slug": "goa-birth",
+      "title": "Birth certificate",
+      "department": "Civil registration",
+      "aliases": [
+        "birth",
+        "registration",
+        "newborn"
+      ],
+      "state": "Goa",
+      "scope": "Goa",
+      "level": "source_guide",
+      "overview": "Certificate retrieval for births registered from 1971 onward; not new or delayed registration.",
+      "eligibility": [],
+      "documents": [],
+      "steps": [
+        "Register and sign in on Goa Online.",
+        "Choose Services → All Services → Planning & Statistics → Birth Certificate (1971 to date).",
+        "Complete the form, submit and retain the acknowledgement for tracking.",
+        "Respond to compliance queries following scrutiny."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": "+91-8882988000; services.goa@gov.in (portal helpdesk)",
+      "applicationUrl": "https://goaonline.gov.in/Appln/Uil/DeptServices?__DocId=PSE&__ServiceId=PSE03",
+      "sources": [
+        {
+          "url": "https://goaonline.gov.in/Appln/Uil/DeptServices?__DocId=PSE&__ServiceId=PSE03",
+          "label": "Goa Online · Birth Certificate (1971 onward)",
+          "supports": [
+            "overview",
+            "authority",
+            "documentNote",
+            "steps",
+            "contact",
+            "applicationUrl"
+          ]
+        }
+      ],
+      "checkedOn": "2026-11-23",
+      "kind": "birth",
+      "district": "",
+      "authority": "Registrar / Sub-Registrar of the registering Municipality / Village Panchayat",
+      "documentNote": "This specific retrieval service states no supporting documents are required.",
+      "notes": [],
+      "validity": null
+    },
+    {
+      "slug": "karnataka-tumakuru-income",
+      "title": "Income certificate",
+      "department": "Revenue",
+      "aliases": [
+        "income",
+        "annual",
+        "family",
+        "income"
+      ],
+      "state": "Karnataka",
+      "scope": "Karnataka · Tumakuru district",
+      "level": "source_guide",
+      "overview": "District-published procedure; confirm current charges locally.",
+      "eligibility": [],
+      "documents": [
+        "Income evidence: salary slip / bank statement or equivalent",
+        "Age, address and identity evidence from the district page’s alternatives",
+        "Photographs and Aadhaar; caste certificate where applicable to a minority applicant"
+      ],
+      "steps": [
+        "Use the district page’s Nadakacheri link; submit uploaded evidence and the displayed payment.",
+        "VA / RI verifies and reports to the signing authority for a decision.",
+        "Print after approval. For in-person submission, use Form F at the Tahsildar office."
+      ],
+      "fees": "District page: ₹15 online; confirm the current charge.",
+      "processingTime": "The page describes 21 days for the in-person route, not an online guarantee.",
+      "contact": null,
+      "applicationUrl": "https://www.nadakacheri.karnataka.gov.in/",
+      "sources": [
+        {
+          "url": "https://tumkur.nic.in/en/service/apply-for-income-certificate/",
+          "label": "Tumakuru District · Income Certificate",
+          "supports": [
+            "overview",
+            "authority",
+            "documents",
+            "steps",
+            "fees",
+            "processingTime",
+            "applicationUrl"
+          ]
+        }
+      ],
+      "checkedOn": "2026-11-23",
+      "kind": "income",
+      "district": "Tumakuru",
+      "authority": "Deputy Tahsildar / Tahsildar",
+      "documentNote": null,
+      "notes": [],
+      "validity": null
+    },
+    {
+      "slug": "maharashtra-satara-income",
+      "title": "Income certificate",
+      "department": "Revenue",
+      "aliases": [
+        "income",
+        "annual",
+        "family",
+        "income"
+      ],
+      "state": "Maharashtra",
+      "scope": "Maharashtra · Satara district",
+      "level": "source_guide",
+      "overview": "Satara’s checklist and linked Aaple Sarkar income service.",
+      "eligibility": [],
+      "documents": [
+        "One identity and one address proof from the accepted alternatives",
+        "One applicable income record: tax statement, Circle Officer report, Form 16, pension/salary bank certificate or land-yield report",
+        "Self-declaration (mandatory)",
+        "Age evidence for minors; medical-officer certificate for medical-facility purposes"
+      ],
+      "steps": [
+        "Prepare the applicable district checklist.",
+        "Open the linked Aaple Sarkar Income Certificate service (ServiceId 1251) and follow its submission instructions.",
+        "Retain the reference; use the listed officer and appeal chain for follow-up."
+      ],
+      "fees": null,
+      "processingTime": null,
+      "contact": null,
+      "applicationUrl": "https://aaplesarkar.mahaonline.gov.in/en/Login/Certificate_Documents?ServiceId=1251",
+      "sources": [
+        {
+          "url": "https://www.satara.gov.in/en/service/income-certificate/",
+          "label": "Satara District · Income Certificate",
+          "supports": [
+            "overview",
+            "authority",
+            "documents",
+            "steps",
+            "applicationUrl"
+          ]
+        }
+      ],
+      "checkedOn": "2026-11-23",
+      "kind": "income",
+      "district": "Satara",
+      "authority": "Nayab Tahsildar; appeals: Tahsildar, then Sub-Divisional Officer",
+      "documentNote": null,
+      "notes": [],
+      "validity": null
     }
   ]
 }
