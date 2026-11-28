@@ -34,6 +34,8 @@ jobs:
         with:
           node-version: '22'
           package-manager-cache: false
+      - name: Install bounded PDF OCR renderer
+        run: sudo apt-get update -qq && sudo apt-get install -y poppler-utils
       - run: npm ci --prefix backend
       - run: npm --prefix backend run build
       - name: Install verified Supabase database CA

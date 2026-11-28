@@ -7,6 +7,7 @@ import { loadApprovedHosts } from './catalog.registry';
 import { audit } from './catalog.audit';
 import { enrichmentFields } from './catalog.enrichment';
 import type { Version } from './catalog.repo';
+import type { SourceDocument } from './catalog.types';
 import { searchSchemeFields } from './catalog.search';
 import { searchPublishers } from './catalog.publishers';
 import { matchesSchemeName } from './catalog.identity';
@@ -53,40 +54,47 @@ export async function runEnrichmentTasks(limit=3,schemeId?:string) {
     counts.review++;continue;
    }
    const meta=metadataSchema.parse(entry.metadata?{...entry.metadata,schemeId:entry.id}:{schemeId:entry.id,title:entry.scheme_name,issuer:entry.department,
-    state:entry.coverage_state || '',category:entry.category || (/scholarship|education/i.test(entry.scheme_name+' '+entry.department)?'Education':'Other'),aliases:[...(entry.aliases || []),entry.description].filter((value:string)=>value?.length>=2 && value.length<=120).slice(0,12)});
+    state:entry.coverage_state || '',category:entry.category || (/scholarship|education/i.test(entry.scheme_name+' '+entry.department)?'Education':'Other'),aliases:[...(entry.aliases || [])].filter((value:string)=>value?.length>=2 && value.length<=120).slice(0,12)});
    const candidates=[entry.source_url || entry.official_url,...(entry.evidence_sources || []).map((source:{url:string})=>source.url),...(meta.sourceLinks || []).map(link=>link.url)];
-   let draft:Version|undefined;
+   let draft:Version|undefined,partial:SourceDocument|undefined;
    let searched=false;
    for(let position=0;position<Math.min(candidates.length,6);position++) {
     const candidate=candidates[position];if(candidates.indexOf(candidate)!==position)continue;
     try {
      const url=officialSourceUrl.parse(candidate);
      const document=await readDocument(createOfficialReader(),url,meta.title);
-     if(!document.text.trim() || document.incomplete)throw new Error(document.extraction?.error || 'Incomplete official extraction.');
-     if(!matchesSchemeName(document.text.slice(0,6000),meta))throw new Error('Scheme identity not confirmed in the opened source.');
+     if(!document.text.trim())throw new Error(document.extraction?.error || 'No readable official source text.');
+     if(!matchesSchemeName(document.text,meta))throw new Error('Scheme identity not confirmed in the opened source.');
+     if(document.incomplete){partial ??= document;throw new Error(document.extraction?.error || 'Partial source retained for review; checking alternatives.');}
      const captured=await captureDocument(meta,document,null,Boolean(entry.published_version));
      const generated=await generateVersion(captured.version.id,true);
      if(generated.status==='generation_failed')throw new Error(generated.error || 'Extraction failed.');
      draft=generated;break;
-    }catch(error){failures.push({url:candidate,status:'unverified',reason:error instanceof Error?error.message.slice(0,300):'Source failed.'});}
+    }catch(error){failures.push({url:candidate,status:'unverified',reason:error instanceof Error?(error.message+((error.cause as {code?:string}|undefined)?.code?' ('+(error.cause as {code:string}).code+')':'')).slice(0,300):'Source failed.'});}
     if(!searched){
      searched=true;
-     const {rows:registry}=await db.query<{url:string}>("select url from public.scheme_source_registry where approved and (jurisdiction=$1 or jurisdiction='India') limit 12",[meta.state || 'India']);
-     const hosts=[...new Set([...registry.map(row=>new URL(row.url).hostname.replace(/^www\./,'')),...searchPublishers.filter(row=>row.state===meta.state).map(row=>row.host),new URL(entry.official_url).hostname.replace(/^www\./,'')])];
+     const {rows:registry}=await db.query<{url:string;department:string}>("select url,department from public.scheme_source_registry where approved and (jurisdiction=$1 or jurisdiction='India') order by case when lower(department) in (lower($2),lower($3)) then 0 else 1 end limit 12",[meta.state || 'India',meta.issuer,meta.category]);
+     const departmentHosts=registry.filter(row=>[meta.issuer.toLowerCase(),meta.category.toLowerCase()].includes(row.department.toLowerCase())).map(row=>new URL(row.url).hostname.replace(/^www\./,''));
+     const hosts=[...new Set([...departmentHosts,new URL(entry.official_url).hostname.replace(/^www\./,''),...searchPublishers.filter(row=>row.state===meta.state).map(row=>row.host),...registry.map(row=>new URL(row.url).hostname.replace(/^www\./,''))])];
      try{candidates.push(...await searchSchemeFields(meta.title,meta.state,['eligibility','documents','benefits','applicationSteps','contacts'],hosts,{aliases:meta.aliases,issuer:meta.issuer}));}
      catch{failures.push({url:entry.official_url,status:'search-unavailable',reason:'Official search unavailable; known source alternatives were still attempted.'});}
     }
    }
+   if(!draft && partial){const captured=await captureDocument(meta,partial,null,Boolean(entry.published_version));const generated=await generateVersion(captured.version.id,true);if(generated.status!=='generation_failed')draft=generated;}
    if(!draft)throw new Error('All available official sources failed. '+failures.map(failure=>failure.reason).join(' ').slice(0,280));
    if(draft.enrichment_report){
     draft.enrichment_report.attempts.unshift(...failures);
+    const unavailable=new Set(draft.enrichment_report.attempts.filter(attempt=>attempt.status==='unverified').map(attempt=>attempt.url));
+    for(const field of Object.values(draft.enrichment_report.fields))if(field.sources.some(url=>unavailable.has(url))){field.status='unverified';field.note='Could not verify from official sources on this check; prior verified values were retained.';}
     draft.enrichment_report.changedFields=enrichmentFields.filter(field=>JSON.stringify(field==='fees'?draft!.description?.record?.facts.fees:draft!.description?.[field])!==JSON.stringify(field==='fees'?entry.published_description?.record?.facts.fees:entry.published_description?.[field]));
     await db.query('update public.scheme_catalog_versions set enrichment_report=$2 where id=$1',[draft.id,JSON.stringify(draft.enrichment_report)]);
    }
    if(entry.published_description && JSON.stringify(entry.published_description)===JSON.stringify(draft.description)) {
+    await db.query('update public.scheme_catalog_versions set enrichment_report=$2 where id=$1',[entry.published_version,JSON.stringify(draft.enrichment_report)]);
     await db.query('update public.scheme_catalog_imports set current_version=published_version where id=$1 and current_version=$2',[draft.import_id,draft.id]);
     await finish('completed',{...draft,id:entry.published_version},'skipped');counts.skipped++;continue;
    }
+   if(!draft.description?.overview.length){await finish('review',draft,'review');counts.review++;continue;}
    const published=await publishVersion(draft.id,null,'Automatically enriched missing fields using captured official evidence.');
    if(published){await finish('completed',draft,'published');counts.published++;}
    else {await finish('review',draft,'review');counts.review++;}

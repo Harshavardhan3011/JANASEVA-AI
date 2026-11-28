@@ -6,11 +6,12 @@ import { compact, officialSourceUrl } from './catalog.types';
 import type { SourceDocument } from './catalog.types';
 import { officialDate } from './record.schema';
 import { matchesSchemeName } from './catalog.identity';
+import { ocrGovernmentPdf } from './catalog.ocr';
 
 const agent='JANASEVA-AI';
 const fetchHeaders={'User-Agent':agent+'/1.0'};
 const maximum=8*1024*1024;
-const textLimit=60000;
+const textLimit=240000;
 const nextRequest=new Map<string,number>();
 async function pace(host:string,delaySeconds=1) {
  const now=Date.now();
@@ -98,7 +99,12 @@ export async function extractPdf(bytes:Buffer, url:string, title:string):Promise
   if (bytes.subarray(0,5).toString()!=='%PDF-') throw new Error('The source did not return a PDF.');
   let doc;
   try {doc=await pdf(bytes,{max:300});} catch {throw new Error('PDF extraction failed. The file may be encrypted, damaged, or unsupported. Upload an accessible official PDF.');}
-  const text=doc.text.trim();
+  let text=doc.text.trim(),partialOcr=false;
+  if(text.length<150 || text.length/Math.max(doc.numpages,1)<120){
+    partialOcr=true;
+    try{const scan=await ocrGovernmentPdf(bytes,doc.numpages);text=scan.text.trim();}
+    catch{if(text.length<30)throw new Error('Scanned official PDF needs OCR. Install Poppler (pdftoppm) and the required OCR language data, or use another official text source.');}
+  }
   if (text.length<30) throw new Error('This PDF has no readable text layer. Scanned PDFs need OCR; upload a text-based official version.');
   const info=doc.info as {Title?:string}|undefined;
   const originalTitle=compact(info?.Title && !/^Microsoft (?:Word|PowerPoint)|^Document\d*/i.test(info.Title)?info.Title:title).slice(0,255);
@@ -111,7 +117,7 @@ export async function extractPdf(bytes:Buffer, url:string, title:string):Promise
     (english>textLimit/2?text.slice(0,6000)+'\n[English section excerpt]\n'+text.slice(english,english+42000)+'\n[Final document excerpt]\n'+text.slice(-6000):text.slice(0,textLimit/2)+'\n[Document excerpt truncated; inspect the complete official PDF.]\n'+text.slice(-textLimit/2)):text;
   return { url, originalTitle, text:selected, applyUrl:application?.success?application.data:null,
     extraction:{method:'pdf',pages:doc.numpages,characters:text.length,truncated:text.length>textLimit || doc.numpages>300},
-    incomplete:text.length<150 || text.length>textLimit || doc.numpages>300 };
+    incomplete:partialOcr || text.length<150 || text.length>textLimit || doc.numpages>300 };
 }
 
 export async function readDocument(read:OfficialReader,url:string,title:string):Promise<SourceDocument> {

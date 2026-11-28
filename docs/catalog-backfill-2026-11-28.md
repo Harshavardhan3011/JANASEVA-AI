@@ -63,3 +63,11 @@ Production worker: `.github/workflows/scheme-backfill.yml` (manual resumable bat
 Existing configuration: JANASEVA_DATABASE_URL or JANASEVA_INGESTION_DATABASE_URL, JANASEVA_LLM_API_KEY, optional JANASEVA_LLM_MODEL / JANASEVA_LLM_PROVIDER, and JANASEVA_TAVILY_API_KEY or JANASEVA_SCHEME_SEARCH_API_KEY. These are GitHub secret/variable names, not credential values. The worker installs the existing verified Supabase CA. Render API equivalents remain DATABASE_URL, LLM_API_KEY, LLM_MODEL, LLM_PROVIDER, TAVILY_API_KEY / SCHEME_SEARCH_API_KEY. SCHEME_ENRICHMENT_ENABLED is explicitly enabled in the daily workflow.
 
 Live scan/update/review/failure counts and any deployment gate are pending the production verification step below.
+
+## Production pass and PDF follow-up
+
+Approved commit 50a1b72 was deployed to Render (dep-dc58mih7lnhs73b300kg) and Vercel. GitHub Actions run 46124051082 checked all 34 active schemes: 2 published, 1 unchanged, 5 review and 26 failed. The action correctly failed rather than claiming all records were complete. Both state publications reused their existing scheme IDs.
+
+This pass exposed a 61-page NSP disability guideline containing 114,158 readable characters, beyond the former 60,000-character limit. The bounded limit is now 240,000, retaining size/page/time limits. Nested headings such as 3.2 ELIGIBILITY and contiguous multiline title evidence are supported. A scanned official Telangana form was successfully OCR-read in a local real-document check (1,005 characters). Poppler is installed in production Docker images and both worker workflows; English OCR processes at most five pages sequentially. All OCR output remains incomplete/review, including short scans, because transcription errors must not automatically publish amounts or conditions. Other scanned languages still require an appropriate supported OCR configuration or an accessible native-text source.
+
+Readable partial sources are retained as drafts after alternate sources are tried. Missing-overview drafts remain in review. Failed rechecks update the field-check report while retaining prior published values and their original verification date. No new database migration or secret is required. Final retry counts are recorded after the follow-up worker finishes.

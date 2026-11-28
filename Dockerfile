@@ -1,5 +1,6 @@
 FROM node:22-bookworm
 WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends poppler-utils && rm -rf /var/lib/apt/lists/*
 COPY backend/package*.json ./backend/
 COPY mock-portal/package*.json ./mock-portal/
 RUN npm ci --prefix backend && npm ci --omit=dev --prefix mock-portal

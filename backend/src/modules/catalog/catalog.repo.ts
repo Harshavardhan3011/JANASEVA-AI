@@ -96,7 +96,7 @@ export async function generateVersion(id:string,force=false) {
   try {
     if (!current.source_text.trim()) throw new Error(current.metadata.extraction?.error || 'The document has no readable source text. Upload a text-based official PDF.');
     const document:SourceDocument={url:current.source_url,originalTitle:current.original_title,text:current.source_text,applyUrl:current.metadata.applyUrl,incomplete:current.metadata.incomplete,links:current.metadata.sourceLinks};
-    if(env.SCHEME_ENRICHMENT_ENABLED && !matchesSchemeName(current.source_text.slice(0,4500),current.metadata))throw new Error('The primary source does not clearly identify this scheme; existing published details were retained.');
+    if(env.SCHEME_ENRICHMENT_ENABLED && !matchesSchemeName(current.source_text,current.metadata))throw new Error('The primary source does not clearly identify this scheme; existing published details were retained.');
     const outcome:ExtractionOutcome={mode:''};
     let description=env.SCHEME_ENRICHMENT_ENABLED?await extractDetails(current.metadata,document,undefined,outcome):await describeScheme(current.metadata,current.source_text);
     if(env.SCHEME_ENRICHMENT_ENABLED && ambiguousVariant(current.metadata.title,current.source_text))description.reviewIssues.push('The guideline covers multiple study-level variants. Review each quoted condition before publishing this variant.');

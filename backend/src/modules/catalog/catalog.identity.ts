@@ -24,7 +24,7 @@ export function compatibleScope(primary:string|null,candidate:string|null) {
   return primary===candidate || (candidate.endsWith('onwards') && b<=a) || (primary.endsWith('onwards') && a<=b);
 }
 export function ambiguousVariant(title:string,text:string) {
- const groups=[['degree','diploma'],['pre-matric','post-matric'],['undergraduate','postgraduate']];
- const heading=compact(text.slice(0,1800)).toLowerCase();
+ const groups=[['degree','diploma'],['pre-matric','post-matric'],['undergraduate','postgraduate'],['jrf','srf']];
+ const heading=compact(text).toLowerCase().replace(/[–—]/g,'-');
  return groups.some(group=>group.filter(term=>title.toLowerCase().includes(term)).length===1 && group.every(term=>heading.includes(term)));
 }

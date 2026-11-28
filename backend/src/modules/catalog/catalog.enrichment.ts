@@ -26,7 +26,7 @@ export const missingFields=(description:SchemeDescription)=>enrichmentFields.fil
 function extractPlainSections(meta:ImportMetadata,document:SourceDocument):SchemeDescription {
  const text=document.text;
  const result=descriptionSchema.parse({...Object.fromEntries(sections.map(key=>[key,[]])),status:'unknown',statusEvidence:null,reviewIssues:[]});
- const labels=[...text.matchAll(/^[ \t]*(?:\d{1,2}[.)][ \t]+)?(overview|about(?: the scheme)?|objectives?|scheme deliverable|benefits?|rate of scholarship|eligibility(?: criteria)?|who is eligible|who can apply|beneficiar(?:y|ies)|who is not eligible|exclusions?|required documents|documents required|documents|how to apply|procedure to apply|application process|contact(?: details| us)?)[ \t]*:?[ \t]*([^\n]*)/gim)];
+ const labels=[...text.matchAll(/^[ \t]*(?:\d{1,2}(?:\.\d{1,2})*[.)]?[ \t]*)?(overview|background|about(?: the scheme)?|objectives?|scheme deliverable|benefits?|financial assistance|quantum of assistance|extent of assistance|components of scholarship|(?:value and duration|value|amount|rates?) of (?:fellowship|scholarship)|eligibility(?: criteria| conditions)?|who is eligible|who can apply|target group|beneficiar(?:y|ies)|who is not eligible|exclusions?|required documents|documents required|documents|enclosures|how to apply|procedure to apply|procedure for applying|application procedure|application process|contact(?: details| us)?)[ \t]*:?[ \t]*([^\n]*)/gim)];
  if(!labels.length)throw new Error('No reliable labelled sections were found; configure the AI provider for this source.');
  const add=(value:string)=>value.split(/\n\s*\n/).map(compact).filter(value=>value.length>=5).flatMap(value=>{
   const chunks=value.match(/.{1,1400}(?:\s|$)/g) || [];return chunks.map(quote=>({text:quote.trim(),quote:quote.trim()}));
@@ -34,15 +34,20 @@ function extractPlainSections(meta:ImportMetadata,document:SourceDocument):Schem
  for(let index=0;index<labels.length;index++){
   const match=labels[index],name=match[1].toLowerCase();
   const raw=(match[2]+'\n'+text.slice(match.index!+match[0].length,labels[index+1]?.index ?? text.length)).split(/Website\/Mobile App Policies|Content Owned by|Useful Links/i)[0].trim();
-  const key=/^who is not|^exclusion/.test(name)?'exclusions':/^eligib|^who is eligible/.test(name)?'eligibility':/^who can|^beneficiar/.test(name)?'whoCanApply':/^benefit|^rate/.test(name)?'benefits':/document/.test(name)?'documents':/^how|^procedure|^application/.test(name)?'applicationSteps':/^contact/.test(name)?'contacts':'overview';
+  const key=/^who is not|^exclusion/.test(name)?'exclusions':/^eligib|^who is eligible/.test(name)?'eligibility':/^who can|^target group|^beneficiar/.test(name)?'whoCanApply':/^benefit|^rate|^value|^amount|^financial assistance|^quantum|^extent|^components/.test(name)?'benefits':/document|enclosure/.test(name)?'documents':/^how|^procedure|^application/.test(name)?'applicationSteps':/^contact/.test(name)?'contacts':'overview';
   result[key]=[...(result[key] || []),...add(raw)].slice(0,key==='overview'?4:key==='eligibility'?18:key==='applicationSteps'?15:10);
  }
  const start=text.toLowerCase().indexOf(meta.title.toLowerCase());
  const body=start>=0?text.slice(start+meta.title.length):text;
  if(!result.overview.length)result.overview=add(body.split('\n').filter(line=>compact(line).length>100 && !/^Date\s*:/i.test(line)).slice(0,1).join('\n')).slice(0,1);
- const titleQuote=compact(start>=0?text.slice(start,start+meta.title.length):document.originalTitle);
+ const titleLines=text.split('\n');
+ const proof=titleLines.map((_,index)=>titleLines.slice(index,index+3).join('\n')).find(value=>value.length<1200 && matchesSchemeName(value,meta));
+ const titleQuote=compact(start>=0?text.slice(start,start+meta.title.length):proof || '');
+ if(titleQuote.length<5)throw new Error('No contiguous official scheme-title evidence was found.');
  const lines=text.split('\n');
- const authority=lines.find(line=>/department\s+name|^ministry of/i.test(line) && compact(line).length<350) || lines.find(line=>/government of|district administration/i.test(line) && compact(line).length>=8 && compact(line).length<350);
+ const authority=lines.find(line=>/department\s+name|^ministry of/i.test(line) && compact(line).length<350) ||
+  lines.find(line=>/\b(?:COUNCIL|COMMISSION|INSTITUTE)\b/.test(line) && /^[A-Z ()&,-]+$/.test(line.trim()) && compact(line).length<250) ||
+  lines.find(line=>/government of|district administration/i.test(line) && compact(line).length>=8 && compact(line).length<350);
  const evidence=(quote:string)=>({text:compact(quote),quote:compact(quote)});
  result.record=recordSchema.parse({type:'scheme',title:{text:meta.title,quote:titleQuote},typeEvidence:evidence(titleQuote),authority:authority?{...evidence(authority),text:compact(authority.split('|').find(part=>/government of|department|ministry/i.test(part)) || authority)}:null});
  return result;
@@ -52,7 +57,7 @@ function extractPlainSections(meta:ImportMetadata,document:SourceDocument):Schem
 // eligibility or synthesize a missing rule, and is reported separately from model extraction.
 export function extractLabelledDetails(meta:ImportMetadata,document:SourceDocument):SchemeDescription {
  const text=document.text;const result=descriptionSchema.parse({...Object.fromEntries(sections.map(key=>[key,[]])),status:'unknown',statusEvidence:null,reviewIssues:[]});
- if(!matchesSchemeName(text.slice(0,3500),meta))throw new Error('The source does not identify this scheme clearly enough for extraction.');
+ if(!matchesSchemeName(text,meta))throw new Error('The source does not identify this scheme clearly enough for extraction.');
  const claim=(quote:string):Claim=>({text:compact(quote),quote});
  const chunks=(value:string)=>value.split(/\n\s*\n|\n\s*(?=[ivx]{1,5}\.\s)/).map(part=>part.trim()).filter(part=>part.length>=5 && compact(part).length<=1600).slice(0,10).map(claim);
  // Horizontal spacing only: a wrapped year ending in "23." is not a new numbered heading.

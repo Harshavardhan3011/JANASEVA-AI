@@ -25,6 +25,9 @@ test('official field enrichment backfills legacy CSSS in place, cites second sou
   const before=(await schemes(id))[0];assert.equal(before.detail,null);
   const meta=metadataSchema.parse({schemeId:id,title:seed.scheme_name,issuer:seed.department,category:'Education',state:'',aliases:[]});
   assert.equal(matchesSchemeName('An unrelated Merit-based scheme',{title:'Unrelated specific scholarship',aliases:['Merit-based scheme']}),false);
+  const nestedMeta=metadataSchema.parse({title:'ICAR Postgraduate Scholarship',issuer:'Indian Council of Agricultural Research',state:''});
+  const nested=await extractDetails(nestedMeta,{url:fixture.primary.url,originalTitle:'Official guideline',incomplete:false,applyUrl:null,text:"INDIAN COUNCIL OF AGRICULTURAL RESEARCH\nSubject: Revised Guidelines for ICAR's Fellowships for Post-graduate Studies (PGS) in Agricultural Sciences\n1. BACKGROUND\nThe Council awards fellowships for post-graduate study in agricultural sciences.\n3.2 ELIGIBILITY\nCandidates must have obtained 60% marks for General categories.\n3.3 VALUE OF FELLOWSHIP\nThe fellowship amount is stated in the applicable official award conditions."});
+  assert.match(nested.eligibility[0].text,/60%/);assert.ok(nested.record?.authority);assert.ok(nested.record?.title?.quote.includes('ICAR'));
   assert.equal(compatibleScope('2026-27','2025-26'),false);assert.equal(ambiguousVariant('AICTE Pragati Technical Degree','AICTE Pragati scholarships for degree and diploma'),true);
   // The captured primary guideline is replayed through the reader as HTML with identical text,
   // while a live-fetch smoke check separately verifies actual PDF bytes/parser.
