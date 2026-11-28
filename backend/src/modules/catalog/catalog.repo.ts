@@ -60,11 +60,12 @@ export async function captureDocument(meta:ImportMetadata,document:SourceDocumen
     const { rows:[previous] }=entry.current_version ? await db.query<Version>(
       'select * from public.scheme_catalog_versions where id=$1',[entry.current_version]) : {rows:[]};
     const needsClassification=previous?.status==='published' && !previous.description?.record && inferredType(previous.original_title)!=='scheme';
+    if(!metadata.applyUrl && previous?.metadata.applyUrl)metadata.applyUrl=previous.metadata.applyUrl;
     if (previous?.fingerprint===hash && !needsClassification && !forceRevision) return { kind:'skipped' as const, version:previous };
     const { rows:[version] }=await db.query<Version>(`
       insert into public.scheme_catalog_versions(import_id,original_title,source_url,source_text,fingerprint,metadata,requires_admin_review)
       values($1,$2,$3,$4,$5,$6,$7) returning *
-    `,[entry.id,document.originalTitle,document.url,document.text,hash,JSON.stringify(metadata),Boolean(actor) || Boolean(previous?.reviewed_by) || Boolean(previous?.requires_admin_review)]);
+    `,[entry.id,document.originalTitle,document.url,document.text,hash,JSON.stringify(metadata),Boolean(actor) || Boolean(previous?.requires_admin_review && previous.review_disposition==='pending')]);
     await db.query('update public.scheme_catalog_imports set current_version=$2 where id=$1',[entry.id,version.id]);
     await audit(db,actor,previous?'scheme.source.changed':'scheme.source.added','version',version.id,'Captured official source evidence.');
     return { kind:previous ? 'changed' as const : 'added' as const,version };

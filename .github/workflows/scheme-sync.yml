@@ -34,6 +34,7 @@ jobs:
           NODE_ENV: production
           NODE_EXTRA_CA_CERTS: /tmp/supabase-ca.crt
           SCHEME_SYNC_WORKER: 'true'
+          SCHEME_ENRICHMENT_ENABLED: 'true'
           DATABASE_URL: ${{ secrets.JANASEVA_DATABASE_URL }}
           INGESTION_DATABASE_URL: ${{ secrets.JANASEVA_INGESTION_DATABASE_URL }}
           LLM_PROVIDER: ${{ vars.JANASEVA_LLM_PROVIDER || 'gemini' }}

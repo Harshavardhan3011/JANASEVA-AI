@@ -49,7 +49,7 @@ export function SchemeCard({scheme,initialSaved=false,onSaveChange}:{scheme:Sche
      {scheme.catalog_status!=='ARCHIVED' && <Link className="secondary-action" to={detailPath}>View details</Link>}
      {user?<button disabled={busy} className="secondary-action" onClick={()=>void save()}>{saved?'Remove saved':'Save'}</button>
        :<Link className="secondary-action" to={"/login?next="+encodeURIComponent(detailPath+"?save=1")}>Log in to save</Link>}
-     {applicableRecord(type) && scheme.application_url && scheme.scheme_status!=='closed' && <a className="secondary-action" href={scheme.application_url} target="_blank" rel="noreferrer">Official application</a>}
+     {scheme.record && applicableRecord(type) && scheme.application_url && scheme.scheme_status!=='closed' && <a className="secondary-action" href={scheme.application_url} target="_blank" rel="noreferrer">Official application</a>}
      <a className="text-sm underline" href={scheme.official_url} target="_blank" rel="noreferrer">Official source</a>
    </div>
    {error && <p role="alert">{error}</p>}

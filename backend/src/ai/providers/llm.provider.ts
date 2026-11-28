@@ -5,6 +5,25 @@ const intent = z.enum(['discover', 'eligibility', 'documents', 'policy', 'unknow
 interface PolicyProvider {
   classify(text: string): Promise<z.infer<typeof intent>>;
 }
+class ProviderError extends Error { constructor(public status:number,message:string){super(message);} }
+let recoveredGeminiModel:string|undefined;
+async function geminiRequest(payload:unknown,timeout:number) {
+ const requested=(recoveredGeminiModel || env.LLM_MODEL || 'gemini-2.5-flash').replace(/^models\//,'');
+ const call=(model:string)=>post('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(model)+':generateContent',{'x-goog-api-key':env.LLM_API_KEY},payload,timeout);
+ try{return await call(requested);}catch(error){
+  if(!(error instanceof ProviderError) || error.status!==404)throw error;
+  // Discover only generation-capable Flash text models actually available to this key.
+  // Do not retry authentication/quota failures or expose provider bodies / request URLs.
+  const response=await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=1000',{
+   headers:{'x-goog-api-key':env.LLM_API_KEY},signal:AbortSignal.timeout(12000),redirect:'error'});
+  if(!response.ok)throw error;
+  const available=z.object({models:z.array(z.object({name:z.string(),supportedGenerationMethods:z.array(z.string()).optional()}))}).parse(await response.json());
+  const candidate=available.models.filter(model=>model.supportedGenerationMethods?.includes('generateContent') && /^models\/gemini-[\d.]+-flash(?:-lite)?$/.test(model.name))
+   .map(model=>model.name.replace(/^models\//,'')).filter(model=>model!==requested).sort((a,b)=>b.localeCompare(a,undefined,{numeric:true}))[0];
+  if(!candidate)throw error;
+  const result=await call(candidate);recoveredGeminiModel=candidate;return result;
+ }
+}
 
 async function post(url: string, headers: Record<string, string>, payload: unknown, timeout=7500) {
   let response:Response;
@@ -23,7 +42,7 @@ async function post(url: string, headers: Record<string, string>, payload: unkno
     const hint=response.status===401?'Check the server LLM_API_KEY.':response.status===403?'Check API key permissions and model access.':
       response.status===404?'Check LLM_MODEL and model availability.':response.status===429?'The provider quota or rate limit was reached. Check usage and retry later.':
       response.status>=500?'The provider is temporarily unavailable. Retry later.':'Check the configured provider and model request.';
-    throw new Error('AI provider request failed (HTTP '+response.status+'). '+hint);
+    throw new ProviderError(response.status,'AI provider request failed (HTTP '+response.status+'). '+hint);
   }
   return response.json();
 }
@@ -119,9 +138,7 @@ export async function generateProviderJson(system:string,text:string):Promise<un
     const parsed = z.object({ choices:z.array(z.object({ message:z.object({ content:z.string() }) })).min(1) }).parse(response);
     return JSON.parse(parsed.choices[0].message.content);
   }
-  const model = env.LLM_MODEL || 'gemini-2.5-flash';
-  const response = await post(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-    { 'x-goog-api-key':env.LLM_API_KEY }, {
+  const response = await geminiRequest({
       systemInstruction:{ parts:[{ text:system }] }, contents:[{ role:'user', parts:[{ text }] }],
       generationConfig:{ responseMimeType:'application/json' },
     },35000);

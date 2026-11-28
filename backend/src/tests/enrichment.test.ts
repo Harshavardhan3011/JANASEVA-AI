@@ -55,8 +55,38 @@ test('official field enrichment backfills legacy CSSS in place, cites second sou
   await db.query("update public.scheme_enrichment_tasks set status='running',lease_until=now()-interval '1 minute' where scheme_id=$1",[id]);const resumed=await runEnrichmentTasks(1,id);assert.equal(resumed.skipped,1);
   const outdated={...fixture.primary,url:'https://scholarships.gov.in/old.pdf',text:fixture.primary.text.replace('2022-23 onwards','2020-21 onwards').replace('4.5','8.5')};
   const oldExtract=await extractDetails(meta,outdated);const {preserveVerified}=await import('../modules/catalog/catalog.enrichment');const conflicting=preserveVerified(reviewed,stamp(oldExtract,outdated.url,null,evidenceDocument(outdated).fingerprint));assert.ok(conflicting.reviewIssues.some(issue=>issue.includes('eligibility')));assert.equal(conflicting.documents[0].text,preserved);
+  // A real state-page format: in-kind benefits and public beneficiaries are valid facts,
+  // even when the source supplies no income limit, document list or application deadline.
+  const stateUrl='https://rangareddy.telangana.gov.in/scheme/t-fiber/';
+  const stateHtml='<title>T-Fiber | RangaReddy District Government of Telangana | India</title><main><h1>T-Fiber</h1><p>T-Fiber aims at creating a scalable, robust, resilient, secure and long-lasting digital infrastructure to deliver various services, applications, content from Government and service providers.</p><h2>Beneficiary:</h2><p>public</p><h2>Benefits:</h2><p>Affordable and reliable high-speed broadband connectivity</p><h3>How To Apply</h3><p>Visit http://tfiber.telangana.gov.in/ website</p></main>';
+  const previousFetch=globalThis.fetch;
+  globalThis.fetch=async(input,init)=>String(input)===stateUrl?new Response(stateHtml,{headers:{'content-type':'text/html'}}):previousFetch(input,init);
+  const stateId=(await db.query("insert into public.schemes(scheme_name,description,department,official_url,coverage_state) values('T-Fiber','Official state program','RangaReddy District',$1,'Telangana') returning id",[stateUrl])).rows[0].id;
+  await enqueueBackfill(stateId,true);const stateRun=await runEnrichmentTasks(1,stateId);assert.equal(stateRun.published,1);
+  const statePublic=(await schemes(stateId))[0];assert.equal(statePublic.detail!.benefits[0].text,'Affordable and reliable high-speed broadband connectivity');
+  assert.equal(statePublic.detail!.documents.length,0);assert.equal(statePublic.scheme_status,'unknown');assert.equal(statePublic.application_url,null);
+  globalThis.fetch=previousFetch;
   const count=(await db.query('select count(*)::int count from public.schemes')).rows[0].count;
+  // A failed primary must not prevent a known, approved alternate guideline being read.
+  const recoveryUrl='https://www.education.gov.in/csss-recovery-fixture.pdf';
+  await db.query(`update public.scheme_catalog_versions set metadata=jsonb_set(metadata,'{sourceLinks}',$2::jsonb)
+    where id=(select published_version from public.scheme_catalog_imports where scheme_id=$1)`,[id,JSON.stringify([{url:recoveryUrl,title:'Official scheme guideline'}])]);
+  const beforeRecovery=globalThis.fetch;
+  globalThis.fetch=async(input,init)=>{const url=new URL(input instanceof Request?input.url:input.toString());
+   if(url.href===fixture.primary.url)return new Response('Primary unavailable',{status:503});
+   if(url.href===recoveryUrl)return new Response('<main>'+primaryText.split('\n').filter(Boolean).map((line:string)=>'<p>'+line+'</p>').join('')+'</main>',{headers:{'content-type':'text/html'}});
+   return beforeRecovery(input,init);
+  };
+  await enqueueBackfill(id,true);const recovered=await runEnrichmentTasks(1,id);assert.equal(recovered.failed,0);assert.equal(recovered.scanned,1);
+  assert.equal((await db.query('select count(*)::int count from public.schemes')).rows[0].count,count);
+  assert.equal((await schemes(id))[0].detail!.documents[0].text,preserved);globalThis.fetch=beforeRecovery;
   assert.equal(await enqueueBackfill(id,true),1);outage=true;const failed=await runEnrichmentTasks(1,id);assert.equal(failed.failed,1);assert.equal((await schemes(id))[0].detail!.documents[0].text,preserved);assert.equal((await db.query('select count(*)::int count from public.schemes')).rows[0].count,count);
+  const manual=await captureDocument(meta,fixture.primary,null,true);
+  await db.query('update public.scheme_catalog_versions set evidence_sources=$2 where id=$1',[manual.version.id,JSON.stringify(generated.evidence_sources)]);
+  await editDraft(manual.version.id,reviewed,actor);
+  await enqueueBackfill(id,true);const pending=await runEnrichmentTasks(1,id);assert.equal(pending.review,1);assert.equal(pending.failed,0);
+  assert.equal((await db.query('select current_version from public.scheme_catalog_imports where scheme_id=$1',[id])).rows[0].current_version,manual.version.id);
+  assert.equal((await schemes(id))[0].detail!.documents[0].text,preserved);
   await db.query('set role janaseva_ingestor');await db.query('select * from public.scheme_enrichment_tasks limit 1');await assert.rejects(db.query('select * from public.users limit 1'));await db.query('reset role');
  }catch(error){console.error(error);throw error;}finally{globalThis.fetch=actualFetch;dns.lookup=lookup;await closeDatabase();await rm(directory,{recursive:true,force:true,maxRetries:5,retryDelay:100});}
 });

@@ -143,7 +143,9 @@ export async function readDocument(read:OfficialReader,url:string,title:string):
   const links:Array<{url:string;title:string}>=[];
   area.find('a[href]').each((_,node)=>{try{const target=officialSourceUrl.parse(new URL($(node).attr('href')!,resolved).href);if(links.length<30)links.push({url:target,title:compact($(node).text()).slice(0,255)});}catch{/* Only approved public links. */}});
   const lines=area.find('h1,h2,h3,h4,h5,h6,p,li,tr,span').toArray().map(node=>compact($(node).text())).filter(Boolean);
-  const text=[...new Set([publisher,publicationText,...lines].filter(Boolean))].join('\n');
+  // The official HTML title often carries the issuing district/ministry outside <main>.
+  // Preserve that fetched evidence instead of dropping it before authority validation.
+  const text=[...new Set([compact($('title').text()),publisher,publicationText,...lines].filter(Boolean))].join('\n');
   const heading=compact(area.find('h1,h2').first().text() || $('title').text() || title).slice(0,255);
   let applyUrl:null|string=null;
   area.find('a[href]').each((_,link)=>{

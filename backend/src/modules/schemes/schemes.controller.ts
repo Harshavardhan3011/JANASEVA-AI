@@ -49,7 +49,7 @@ export async function schemes(id?: string, includeDetails=false): Promise<Catalo
            coalesce(v.metadata->>'category',s.category,case when s.catalog_source_url='https://scholarships.gov.in/All-Scholarships' then 'Education' end) as category,
            coalesce(v.description->'record'->'jurisdiction'->>'level',v.metadata->>'coverageLevel',s.coverage_level) as coverage_level,coalesce(v.description->'record'->'jurisdiction'->>'state',nullif(v.metadata->>'state',''),s.coverage_state) as coverage_state,
            coalesce(v.description->'record'->'jurisdiction'->>'district',v.metadata->>'district',s.coverage_district) as coverage_district,s.coverage_village,
-           case when v.id is not null then v.metadata->>'applyUrl' else s.application_url end as application_url,
+           case when v.id is not null then v.metadata->>'applyUrl' else null end as application_url,
            coalesce(v.description->'benefits'->0->>'text',s.benefits_summary) as benefits_summary,coalesce(v.description->'eligibility'->0->>'text',s.eligibility_summary) as eligibility_summary,coalesce(v.description->>'status','unknown') as scheme_status,
            coalesce(v.description->'record'->>'type','scheme') as record_type,v.description->'record' as record,
            v.original_title,v.fetched_at as source_fetched_at,v.enrichment_report as enrichment,t.status as enrichment_status,

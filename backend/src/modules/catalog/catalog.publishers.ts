@@ -25,7 +25,7 @@ const states = [
   ['Rajasthan', 'rajasthan.gov.in'],
   ['Sikkim', 'sikkim.gov.in'],
   ['Tamil Nadu', 'tn.gov.in'],
-  ['Telangana', 'telangana.gov.in'],
+  ['Telangana', 'telangana.gov.in', 'rangareddy.telangana.gov.in'],
   ['Tripura', 'tripura.gov.in'],
   ['Uttar Pradesh', 'up.gov.in'],
   ['Uttarakhand', 'uk.gov.in'],

@@ -91,7 +91,7 @@ export const SchemeDetailPage=({section='schemes'}:{section?:'schemes'|'certific
         {entry.enrichment?.status && <p>Detail enrichment · {entry.enrichment.status==='review'?'Some proposed details need verification':entry.enrichment.status==='completed'?'Official sources checked':entry.enrichment.status==='failed'?'Recheck needed; verified details retained':entry.enrichment.status}</p>}
         {entry.enrichment?.checkedAt && <p>Additional official sources checked: {dateLabel(entry.enrichment.checkedAt)}</p>}
         {entry.enrichment?.mode && <p>Description method: {entry.enrichment.mode}</p>}
-        {applicableRecord(entry.record_type) && entry.application_url && entry.scheme_status!=='closed' ? <a className="primary-action" href={entry.application_url} target="_blank" rel="noreferrer">
+        {entry.detail && applicableRecord(entry.record_type) && entry.application_url && entry.scheme_status!=='closed' ? <a className="primary-action" href={entry.application_url} target="_blank" rel="noreferrer">
           Apply on official portal <ArrowUpRight size={16}/></a> : null}
         {['regulatory_guide','notification','recruitment','exam','result'].includes(entry.record_type || '') && <a className="secondary-action mt-3" href={entry.official_url} target="_blank" rel="noreferrer">Download / view official notification</a>}
         {user && applicableRecord(entry.record_type) && <button className="secondary-action mt-3" disabled={saving} onClick={async()=>{
@@ -99,9 +99,8 @@ export const SchemeDetailPage=({section='schemes'}:{section?:'schemes'|'certific
         }}>Prepare a personal draft</button>}
       </section>
       {entry.record && <RecordFacts record={entry.record} source={entry.official_url}/>}
-      {entry.enrichment?.checkedAt && <section className="workflow-card"><h2>Detail verification</h2><ul className="space-y-2 pt-2">{Object.entries(entry.enrichment.fields).map(([field,state])=><li key={field}><strong>{({applicationSteps:'How to apply',dates:'Application dates',fees:'Fees',documents:'Required documents',benefits:'Benefits',eligibility:'Eligibility',contacts:'Contacts'} as Record<string,string>)[field] || field}</strong> · {state.status==='verified'?'Supported by official evidence':'Not verified after checking available official sources.'}</li>)}</ul></section>}
       {user && id && <SchemeChecklist id={id} items={[...(entry.detail?.documents || []),...(entry.detail?.applicationSteps || [])].map(claim=>claim.text)}/>}
-      {schemeSections.filter(([key])=>publicSections(entry.record_type).includes(key)).map(([key,label])=>{
+      {schemeSections.filter(([key])=>publicSections(entry.record_type).includes(key) && Boolean(entry.detail?.[key]?.length)).map(([key,label])=>{
         const claims=entry.detail?.[key];
         const List=key==='applicationSteps' ? 'ol' : 'ul';
         return <section className="workflow-card" key={key}><h2>{label}</h2>

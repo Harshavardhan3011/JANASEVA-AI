@@ -38,7 +38,7 @@ export async function runCatalogSync(trigger='scheduled',autoPublish=true,reques
   const db=await database();
   await loadApprovedHosts();
   await runRechecks();
-  if(env.SCHEME_ENRICHMENT_ENABLED){await enqueueBackfill();await runEnrichmentTasks();}
+  if(env.SCHEME_ENRICHMENT_ENABLED){await enqueueBackfill();const results=await runEnrichmentTasks();console.info('Scheme field enrichment:',JSON.stringify(results));}
   await db.query(`update public.scheme_catalog_runs
     set finished_at=now(),failed=greatest(failed,1),error='The worker stopped before recording a result.'
     where finished_at is null and started_at<now()-interval '13 minutes'`);
