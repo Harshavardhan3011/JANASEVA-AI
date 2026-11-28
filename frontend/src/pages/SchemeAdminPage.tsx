@@ -17,7 +17,7 @@ interface Run {id:string;source_id:string;trigger_kind:string;started_at:string;
 interface Import {id:string;scheme_id:string|null;version_id:string;original_title:string;status:string;error:string|null;metadata:{title:string}}
 interface Registry {id:string;label:string;url:string;purpose:string;jurisdiction:string;department:string;access_method:string;access_note:string;approved:boolean;last_error:string|null}
 interface Dashboard {sources:Source[];runs:Run[];imports:Import[];registry:Registry[];coverage:Array<{jurisdiction:string;department:string;sources:number;approved:number}>;categories?:string[];actualCoverage?:Array<{jurisdiction:string;authority:string;type:string;published:number}>;enrichment?:Array<{scheme_id:string;scheme_name:string;status:string;attempts:number;completed_at:string|null;error:string|null;version_id:string|null}>}
-interface Version {id:string;source_url:string;original_title:string;source_text:string;metadata:{title:string;applyUrl:string|null;reviewNote?:string;incomplete:boolean;extraction?:{method:string;characters:number;pages?:number;truncated:boolean;error?:string}};description:Description|null;published_description:Description|null;error:string|null;status:string;scheme_id:string|null;human_edited?:boolean;evidence_sources?:Array<{url:string;text:string;title:string;scope:string|null;fetchedAt:string}>;enrichment_report?:{attempts:Array<{url:string;status:string;reason?:string}>;fields:Record<string,{status:string}>}}
+interface Version {id:string;source_url:string;original_title:string;source_text:string;metadata:{title:string;applyUrl:string|null;reviewNote?:string;incomplete:boolean;extraction?:{method:string;characters:number;pages?:number;truncated:boolean;error?:string}};description:Description|null;published_description:Description|null;error:string|null;status:string;scheme_id:string|null;human_edited?:boolean;requires_admin_review?:boolean;evidence_sources?:Array<{url:string;text:string;title:string;scope:string|null;fetchedAt:string}>;enrichment_report?:{attempts:Array<{url:string;status:string;reason?:string}>;fields:Record<string,{status:string}>}}
 
 function ClaimInput({ claim,onChange,sources=[] }:{claim:Claim;onChange:(value:Claim)=>void;sources?:Array<{url:string;fingerprint?:string;scope?:string|null}>}) {
   return <div className="input-grid">
@@ -198,6 +198,9 @@ export const SchemeAdminPage=({section='editor'}:{section?:'editor'|'sources'})=
       </>}
       {version ? <section className="workflow-card">
         <h2>{version.metadata.title}</h2>
+        {version.status!=='published' && <p role="note">{version.requires_admin_review || version.human_edited
+          ? 'Manual submission or edit: administrator approval is required.'
+          : 'Automatically fetched: publishes automatically after official-source validation. No administrator approval is required. Failed or conflicting checks retain the previous published details.'}</p>}
         <p><a className="text-teal-800 underline" href={version.source_url} target="_blank" rel="noreferrer">{version.original_title}</a></p>
         {version.metadata.reviewNote ? <p role="note">{version.metadata.reviewNote}</p> : null}
         {version.metadata.incomplete ? <p role="note">Source text may be incomplete.</p> : null}

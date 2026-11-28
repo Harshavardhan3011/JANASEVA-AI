@@ -8,7 +8,7 @@ import { requireSchemeReviewer } from '../../middleware/schemeReviewer';
 import { AppError } from '../../shared/errors';
 import { successResponse } from '../../shared/response';
 import { createOfficialReader, extractPdf, readDocument } from './catalog.fetch';
-import { captureDocument, editDraft, generateVersion, publishVersion } from './catalog.repo';
+import { captureDocument, editDraft, generateVersion, publishVersion, publishGeneratedVersion } from './catalog.repo';
 import { descriptionSchema, metadataSchema, officialSourceUrl } from './catalog.types';
 import { enqueueDiscovery, processDiscoveryQueue } from './catalog.queue';
 import { audit } from './catalog.audit';
@@ -128,15 +128,15 @@ router.put('/versions/:id',async(req,res)=>{
   successResponse(res,{saved:true});
 });
 router.post('/versions/:id/retry',async(req,res)=>{
-  successResponse(res,await generateVersion(z.uuid().parse(req.params.id),true));
+  successResponse(res,await publishGeneratedVersion(await generateVersion(z.uuid().parse(req.params.id),true)));
 });
 router.post('/versions/:id/refetch',async(req,res)=>{
   await loadApprovedHosts();
-  const {rows:[row]}=await (await database()).query('select metadata,source_url from public.scheme_catalog_versions where id=$1',[z.uuid().parse(req.params.id)]);
+  const {rows:[row]}=await (await database()).query('select metadata,source_url,requires_admin_review,human_edited from public.scheme_catalog_versions where id=$1',[z.uuid().parse(req.params.id)]);
   if (!row) throw AppError.notFound('Source version not found.');
   const document=await readDocument(createOfficialReader(),row.source_url,row.metadata.title);
-  const captured=await captureDocument(metadataSchema.parse(row.metadata),document,req.user!.id);
-  const version=captured.kind==='skipped'?captured.version:await generateVersion(captured.version.id);
+  const captured=await captureDocument(metadataSchema.parse(row.metadata),document,req.user!.id,false,{requiresApproval:Boolean(row.requires_admin_review || row.human_edited)});
+  const version=await publishGeneratedVersion(captured.kind==='skipped'?captured.version:await generateVersion(captured.version.id));
   successResponse(res,{result:captured.kind,version});
 });
 router.post('/versions/:id/publish',async(req,res)=>{

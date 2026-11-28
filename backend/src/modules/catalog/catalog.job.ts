@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { database } from '../../config/db';
 import { env } from '../../config/env';
 import { createOfficialReader, discoverPib, readDocument } from './catalog.fetch';
-import { captureDocument, generateVersion, publishVersion } from './catalog.repo';
+import { captureDocument, generateVersion, publishVersion, publishReadyVersions } from './catalog.repo';
 import { hasSearchKey, searchMetadata, searchOfficialSchemes } from './catalog.search';
 import { loadApprovedHosts, discoverListing } from './catalog.registry';
 import { runRechecks } from './catalog.recheck';
@@ -37,6 +37,7 @@ async function claim() {
 export async function runCatalogSync(trigger='scheduled',autoPublish=true,requestId:string|null=null) {
   const db=await database();
   await loadApprovedHosts();
+  console.info('Automatic draft publication:',JSON.stringify(await publishReadyVersions()));
   await runRechecks();
   if(env.SCHEME_ENRICHMENT_ENABLED){await enqueueBackfill();const results=await runEnrichmentTasks();console.info('Scheme field enrichment:',JSON.stringify(results));}
   await db.query(`update public.scheme_catalog_runs

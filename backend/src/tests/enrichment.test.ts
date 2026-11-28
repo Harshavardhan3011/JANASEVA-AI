@@ -13,7 +13,7 @@ test('official field enrichment backfills legacy CSSS in place, cites second sou
  const {metadataSchema,verifyDescription}=await import('../modules/catalog/catalog.types');
  const {createOfficialReader,readDocument}=await import('../modules/catalog/catalog.fetch');
  const {enrichDetails,extractDetails,stamp,evidenceDocument}=await import('../modules/catalog/catalog.enrichment');
- const {editDraft,publishVersion,captureDocument}=await import('../modules/catalog/catalog.repo');
+ const {editDraft,publishVersion,captureDocument,publishGeneratedVersion,generateVersion,publishReadyVersions}=await import('../modules/catalog/catalog.repo');
  const {schemes}=await import('../modules/schemes/schemes.controller');
  const {matchesSchemeName,compatibleScope,ambiguousVariant}=await import('../modules/catalog/catalog.identity');
  const actualFetch=globalThis.fetch,dns=require('node:dns/promises'),lookup=dns.lookup;let outage=false;
@@ -69,6 +69,26 @@ test('official field enrichment backfills legacy CSSS in place, cites second sou
   const statePublic=(await schemes(stateId))[0];assert.equal(statePublic.detail!.benefits[0].text,'Affordable and reliable high-speed broadband connectivity');
   assert.equal(statePublic.detail!.documents.length,0);assert.equal(statePublic.scheme_status,'unknown');assert.equal(statePublic.application_url,null);
   globalThis.fetch=previousFetch;
+  // A verified, summary-only automated scheme needs no approval, including admin-triggered fetches.
+  const automaticMeta=metadataSchema.parse({title:'Village Connectivity Scheme',issuer:'RangaReddy District',state:'Telangana',category:'Infrastructure'});
+  const automaticDocument={url:'https://rangareddy.telangana.gov.in/scheme/overview-fixture/',originalTitle:automaticMeta.title,
+   text:'Village Connectivity Scheme | RangaReddy District Government of Telangana | India\nOverview\nThe Village Connectivity Scheme builds digital infrastructure to deliver government services in villages.',applyUrl:null,incomplete:false};
+  const automatic=await captureDocument(automaticMeta,automaticDocument,actor,false,{requiresApproval:false});
+  assert.equal(automatic.version.requires_admin_review,false,'An audit actor must not make an automatic refetch a manual submission.');
+  const automaticDraft=await generateVersion(automatic.version.id,true);
+  assert.equal(automaticDraft.status,'draft',automaticDraft.error || 'Expected a generated draft');
+  assert.equal(automaticDraft.description!.benefits.length,0);
+  const ready=await publishReadyVersions();
+  assert.equal(ready.published,1,'Existing eligible automatic drafts are released by the scheduler without approval.');
+  const automaticPublished=(await db.query('select * from public.scheme_catalog_versions where id=$1',[automaticDraft.id])).rows[0];
+  assert.equal(automaticPublished.status,'published','Missing optional fields do not require approval.');
+  assert.equal(automaticPublished.reviewed_by,null,'Automatic publication has no approving administrator.');
+  const manualImport=await captureDocument(automaticMeta,automaticDocument,actor,true);
+  const manualGenerated=await generateVersion(manualImport.version.id,true);
+  assert.equal((await publishGeneratedVersion(manualGenerated)).status,'draft','Manual submissions still require approval.');
+  const unsafe=await captureDocument(automaticMeta,{...automaticDocument,incomplete:true},null,true);
+  // Preserve the manual queue: subsequent automated fetching cannot bypass its pending approval.
+  assert.equal(unsafe.version.requires_admin_review,true);
   const count=(await db.query('select count(*)::int count from public.schemes')).rows[0].count;
   // A failed primary must not prevent a known, approved alternate guideline being read.
   const recoveryUrl='https://www.education.gov.in/csss-recovery-fixture.pdf';

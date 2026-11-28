@@ -121,3 +121,13 @@ The next daily sync uses the existing 02:00 UTC workflow and processes the share
 - backend/src/modules/schemes/schemes.controller.ts: published application links and current version responses.
 - frontend/src/pages/SchemeDetailPage.tsx, SchemeCard.tsx and SchemeAdminPage.tsx: populated public sections, verified Apply actions and admin unresolved-field wording.
 - backend/src/tests/enrichment.test.ts / provider.test.ts, README.md and this report: regression checks and operating instructions.
+
+## Automatic publishing policy follow-up
+
+AI-fetched official records do not require administrator approval. Admin-triggered source refetches retain automated provenance, and successful AI retries attempt publication immediately. An audit actor is recorded for fetching without being treated as the approving publisher. Manual URL/PDF submissions and human-edited drafts remain protected. Clients cannot set this publication provenance.
+
+A scheme with verified identity, authority and overview may publish even when optional benefits, eligibility or other sections are unavailable. Missing information remains unknown and omitted; the shared card uses Summary when a benefit is unavailable. Incomplete scans, contradictory source versions, unsupported numerical claims and failed identity checks are verification failures rather than permission requirements. The previous published version remains intact.
+
+The daily worker re-evaluates eligible existing automatic drafts, with bounded batches and a one-day delay for unresolved verification checks. It excludes manual, edited and rejected drafts. Admin retries use the same automatic publication gate. To trigger this without new AI calls: npm run schemes:backfill -- --limit=100 --publish-ready, or select publish_ready in the existing Backfill scheme details workflow. No migration or new secrets are needed. SCHEME_CATALOG_AUTO_PUBLISH defaults to true and remains the server-side deployment switch.
+
+Regression checks cover summary-only automatic publication, admin fetches preserving automated provenance, manual submissions remaining unpublished, an AI retry becoming visible immediately through the public API, duplicate-safe repeats, and retaining that publication during a source outage.

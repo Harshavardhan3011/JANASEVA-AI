@@ -35,7 +35,7 @@ async function lockImport(db:Database,id:string) {
   return row;
 }
 
-export async function captureDocument(meta:ImportMetadata,document:SourceDocument,actor:string|null=null,forceRevision=false) {
+export async function captureDocument(meta:ImportMetadata,document:SourceDocument,actor:string|null=null,forceRevision=false,options:{requiresApproval?:boolean}={}) {
   let canonical=canonicalSource(document.identityUrl || document.url);
   if(meta.schemeId){const {rows:[existing]}=await (await database()).query<ImportRow>('select * from public.scheme_catalog_imports where scheme_id=$1',[meta.schemeId]);canonical=existing?.canonical_url || canonical+'#record-'+meta.schemeId;}
   const authority=new URL(canonical).hostname.replace(/^www\./,'');
@@ -65,7 +65,7 @@ export async function captureDocument(meta:ImportMetadata,document:SourceDocumen
     const { rows:[version] }=await db.query<Version>(`
       insert into public.scheme_catalog_versions(import_id,original_title,source_url,source_text,fingerprint,metadata,requires_admin_review)
       values($1,$2,$3,$4,$5,$6,$7) returning *
-    `,[entry.id,document.originalTitle,document.url,document.text,hash,JSON.stringify(metadata),Boolean(actor) || Boolean(previous?.requires_admin_review && previous.review_disposition==='pending')]);
+    `,[entry.id,document.originalTitle,document.url,document.text,hash,JSON.stringify(metadata),(options.requiresApproval ?? Boolean(actor)) || Boolean(previous?.requires_admin_review && previous.review_disposition==='pending')]);
     await db.query('update public.scheme_catalog_imports set current_version=$2 where id=$1',[entry.id,version.id]);
     await audit(db,actor,previous?'scheme.source.changed':'scheme.source.added','version',version.id,'Captured official source evidence.');
     return { kind:previous ? 'changed' as const : 'added' as const,version };
@@ -165,7 +165,8 @@ export async function publishVersion(id:string,actor:string|null,reason='Verifie
     if (!actor && draft.record) {
       const record=draft.record;
       if (!record.typeEvidence || !record.authority) return null;
-      if (record.type==='scheme' && (!draft.benefits.length || !(draft.eligibility.length || draft.whoCanApply.length))) return null;
+      // Optional scheme fields may be absent: a validated overview can publish on its own.
+      // Missing facts remain unknown rather than turning an automated import into an approval request.
       if (record.type==='event' && !record.dates.some(date=>date.kind==='event' && date.value)) return null;
       if (record.type==='public_notice' && !record.dates.some(date=>['hearing','registration_deadline','event'].includes(date.kind) && date.value)) return null;
       if (record.type==='citizen_service' && (!draft.documents.length || !record.facts.applicationChannels.length)) return null;
@@ -223,4 +224,37 @@ export async function publishVersion(id:string,actor:string|null,reason='Verifie
     await audit(db,actor,'scheme.published','scheme',schemeId,reason);
     return schemeId;
   });
+}
+
+// Admin-triggered retries retain automated provenance. Audit identity is not approval.
+export async function publishGeneratedVersion(version:Version) {
+  if(!env.SCHEME_CATALOG_AUTO_PUBLISH || version.status!=='draft' || !version.description?.overview.length)return version;
+  const schemeId=await publishVersion(version.id,null,'Automatically published source-validated generated details; no manual approval required.');
+  if(!schemeId)return version;
+  await (await database()).query(`update public.scheme_enrichment_tasks set status='completed',completed_at=now(),next_attempt_at=now()+interval '7 days',error=null,version_id=$2,result=coalesce(result,'{}'::jsonb)||'{"outcome":"published"}'::jsonb where scheme_id=$1 and status='review'`,[schemeId,version.id]);
+  const {rows:[published]}=await (await database()).query<Version>('select * from public.scheme_catalog_versions where id=$1',[version.id]);
+  return published;
+}
+
+// Re-evaluate existing automatic drafts after validation improvements; user submissions stay out.
+export async function publishReadyVersions(limit=100) {
+  const counts={scanned:0,published:0,blocked:0};
+  if(!env.SCHEME_CATALOG_AUTO_PUBLISH)return counts;
+  const db=await database();
+  const {rows}=await db.query<Version>(`select v.* from public.scheme_catalog_imports i
+    join public.scheme_catalog_versions v on v.id=i.current_version where v.status='draft'
+    and not v.requires_admin_review and not v.human_edited and v.review_disposition<>'rejected'
+    and (v.retry_at is null or v.retry_at<=now()) order by coalesce(v.retry_at,v.fetched_at),v.id limit $1`,[limit]);
+  for(const version of rows){
+    counts.scanned++;
+    let reason=version.metadata.incomplete?'Official-source extraction is incomplete.':version.description?.reviewIssues.join(' ').slice(0,300) || 'Required identity or authority evidence has not been verified.';
+    try {
+      const result=await publishGeneratedVersion(version);
+      if(result.status==='published'){counts.published++;continue;}
+    }catch(error) {reason=error instanceof Error?error.message.slice(0,300):reason;}
+    counts.blocked++;
+    await db.query(`update public.scheme_catalog_versions set retry_at=now()+interval '1 day',
+      error=$2 where id=$1 and status='draft'`,[version.id,'Automatic verification pending: '+reason+' Existing published details retained.']);
+  }
+  return counts;
 }

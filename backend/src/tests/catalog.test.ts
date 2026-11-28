@@ -128,6 +128,8 @@ test('background import, validated publication, AP review, deduplication and fai
       await new Promise(resolve=>setTimeout(resolve,250));
     }
     assert.ok(completed,'scheduled sync completed with zero requests');
+    // Scheduling is verified above; stop its timer before controlled source-failure assertions.
+    await stop();
     const { rows }=await db.query<{published:number}>(
       "select published from public.scheme_catalog_runs where source_id='central-pib'");
     assert.equal(rows[0].published,1,JSON.stringify((await db.query('select error,outcomes from public.scheme_catalog_runs')).rows));
@@ -301,21 +303,25 @@ test('background import, validated publication, AP review, deduplication and fai
     assert.equal(afterFailedGeneration.alerts.length,1,'failed generation creates no publication alert');
     invalidModel=false;
     const {data:recovered}=await request(admin+'/versions/'+broken.version_id+'/retry',{method:'POST',headers});
-    assert.equal(recovered.status,'draft');
+    assert.equal(recovered.status,'published','A valid AI retry publishes without administrator approval.');
+    assert.equal(recovered.reviewed_by,null);
+    const {data:afterRecovery}=await request('/schemes/'+central.id);
+    assert.equal(afterRecovery.detail.benefits[0].text,'The grant is ₹4,000 per household.');
+    await request(admin+'/versions/'+broken.version_id+'/retry',{method:'POST',headers});
     assert.equal(recovered.description.benefits[0].text,'The grant is ₹4,000 per household.');
     fail=true;
     await markDue();await runCatalogSync('test-failure');
     const {data:retained}=await request('/schemes/'+central.id);
-    assert.deepEqual(retained.detail,updated.detail);
+    assert.deepEqual(retained.detail,afterRecovery.detail);
     const {data:afterFailedSync}=await request('/citizen-schemes',{headers});
-    assert.equal(afterFailedSync.alerts.length,1,'unchanged and failed syncs create no duplicate alerts');
+    assert.equal(afterFailedSync.alerts.length,2,'The automatic recovery publishes one alert; reruns and outages create no duplicate alerts.');
     const {data:otherInbox}=await request('/citizen-schemes',{headers:otherHeaders});
     assert.equal(otherInbox.alerts.length,0);
     ({data:list}=await request('/schemes'));
     assert.equal(list.filter((entry:any)=>entry.scheme_name===head).length,1);
     const {data:after}=await request(admin,{headers});
     const traditional=after.sources.filter((source:any)=>source.kind!=='official_search');
-    assert.ok(traditional.every((source:any)=>source.last_success_at && source.last_error.includes('503')));
+    assert.ok(traditional.every((source:any)=>source.last_success_at && source.last_error?.includes('503')),JSON.stringify(traditional));
     assert.equal(searchQueries.length,0,'without a key, the existing source checks still run');
     await db.query("update public.scheme_catalog_sources set enabled=false where kind<>'official_search'");
     env.SCHEME_SEARCH_API_KEY='fixture-search-key';

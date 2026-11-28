@@ -3,6 +3,11 @@ name: Backfill scheme details
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: Enrich official sources or publish existing validated automatic drafts
+        type: choice
+        options: [enrich, publish_ready]
+        default: enrich
       batch_size:
         description: Maximum records in this batch (1-100)
         default: '3'
@@ -44,6 +49,7 @@ jobs:
         shell: bash
         run: |
           args=(--limit="$BACKFILL_LIMIT")
+          if [ "$BACKFILL_MODE" = 'publish_ready' ]; then args+=(--publish-ready); fi
           if [ -n "$TARGET_SCHEME" ]; then args+=(--scheme="$TARGET_SCHEME"); fi
           if [ "$RETRY_RECORDS" = 'true' ]; then args+=(--retry); fi
           npm run schemes:backfill -- "${args[@]}"
@@ -59,6 +65,7 @@ jobs:
           LLM_API_KEY: ${{ secrets.JANASEVA_LLM_API_KEY }}
           TAVILY_API_KEY: ${{ secrets.JANASEVA_TAVILY_API_KEY }}
           SCHEME_SEARCH_API_KEY: ${{ secrets.JANASEVA_SCHEME_SEARCH_API_KEY }}
+          BACKFILL_MODE: ${{ inputs.mode }}
           BACKFILL_LIMIT: ${{ inputs.batch_size }}
           TARGET_SCHEME: ${{ inputs.scheme_id }}
           RETRY_RECORDS: ${{ inputs.retry }}
