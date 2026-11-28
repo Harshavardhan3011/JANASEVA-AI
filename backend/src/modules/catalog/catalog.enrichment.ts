@@ -136,7 +136,7 @@ export async function enrichDetails(meta:ImportMetadata,primary:SourceDocument,i
  const {rows:registry}=await (await database()).query<{url:string}>(`select url from public.scheme_source_registry where approved and (jurisdiction=$1 or jurisdiction='India') and (lower(department)=lower($2) or lower(department)=lower($3)) limit 3`,[meta.state || 'India',meta.category,meta.issuer]);
  const originHost=new URL(primary.url).hostname.replace(/^www\./,'');
  const hosts=[...new Set([...( /education|scholarship/i.test(meta.issuer+' '+meta.title)?['education.gov.in']:[]),...registry.map(row=>new URL(row.url).hostname.replace(/^www\./,'')).filter(host=>host!==originHost),originHost])];
- if(missing.length)try{candidates.push(...await searchSchemeFields(meta.title,meta.state,missing,hosts));}catch{report.attempts.push({url:primary.url,status:'search-unavailable',reason:'Official search could not be completed; linked sources are still checked.'});}
+ if(missing.length)try{candidates.push(...await searchSchemeFields(meta.title,meta.state,missing,hosts,{aliases:meta.aliases,issuer:meta.issuer}));}catch{report.attempts.push({url:primary.url,status:'search-unavailable',reason:'Official search could not be completed; linked sources are still checked.'});}
  const read=createOfficialReader();
  for(const url of [...new Set(candidates)].filter(url=>url!==primary.url).slice(0,4)) {
   try {
@@ -144,7 +144,7 @@ export async function enrichDetails(meta:ImportMetadata,primary:SourceDocument,i
    const state=publisherForHost(new URL(document.url).hostname)?.state;
    if(state && state!==meta.state)throw new Error('Jurisdiction mismatch: this official publisher serves another state.');
    if(meta.state && !state && !compact(document.text.slice(0,5000)).toLowerCase().includes(meta.state.toLowerCase()) && !(meta.state==='Andhra Pradesh' && new URL(document.url).hostname.endsWith('.ap.gov.in')))throw new Error('The opened source does not confirm this scheme’s state jurisdiction.');
-   if(!matchesSchemeName(document.text.slice(0,4500),meta))throw new Error('Scheme identity was not confirmed in the opened source.');
+   if(!matchesSchemeName(document.text,meta))throw new Error('Scheme identity was not confirmed in the opened source.');
    if(ambiguousVariant(meta.title,document.text))throw new Error('Multiple scheme variants need review before their fields can be merged.');
    const scope=sourceScope(document.text),baseScope=sourceScope(primary.text);
    if((baseScope || scope) && !compatibleScope(baseScope,scope))throw new Error('Applicable version is missing or incompatible with the primary source ('+(baseScope || 'unspecified')+').');
