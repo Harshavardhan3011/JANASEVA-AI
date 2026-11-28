@@ -30,15 +30,21 @@ export function SchemeCard({scheme,initialSaved=false,onSaveChange}:{scheme:Sche
  }
  const type=scheme.record_type || scheme.record?.type || 'scheme';
  const certificate=isCertificateRecord(scheme),detailPath=catalogDetailPath(scheme);
+ const availableText=(value?:string|null)=>{
+   const text=value?.trim();
+   return text && !/^(?:not specified(?: in the official source)?|could not verify from official sources|not verified|unknown|n\/a)[.!]?$/i.test(text)?text:null;
+ };
+ const benefit=availableText(scheme.benefit) || availableText(scheme.benefits_summary);
+ const summary=availableText(scheme.description);
  return <article className="catalog-card flex min-w-0 flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5">
    <div className="inline-actions"><span className="state-label">{certificate?'Certificate':recordLabels[type]}</span><span className="text-xs font-semibold">{scheme.record?.jurisdiction.level==='Central'?'Central Government':scheme.record?.jurisdiction.level==='State'?'State Government · '+(scheme.coverage_state || 'check state'):scheme.record?.jurisdiction.level==='Union Territory'?'Union Territory administration':scheme.record?.jurisdiction.level==='District'?'District authority':scheme.record?.jurisdiction.level==='Local'?'Local authority':scheme.coverage_state?'Coverage · '+scheme.coverage_state:'India · check authority'}</span></div>
    {scheme.catalog_status==='ARCHIVED' && <p className="text-sm font-bold">Archived from the public catalog · saved in your account</p>}
    <h3 className="font-bold">{scheme.catalog_status==='ARCHIVED'?scheme.scheme_name:<Link to={detailPath} className="underline">{scheme.scheme_name}</Link>}</h3>
    <p className="text-xs text-slate-600">{[scheme.category,scheme.coverage_state].filter(Boolean).join(' · ')}</p>
    {scheme.match_label && <p className="text-sm font-bold text-blue-700">{scheme.match_label}</p>}
-   <p className="catalog-summary">{scheme.description}</p>
+   {(type!=='scheme' || benefit) && summary && <p className="catalog-summary">{summary}</p>}
    {scheme.match_reasons?.length ? <ul className="list-disc pl-5 text-sm">{scheme.match_reasons.map(reason=><li key={reason}>{reason}</li>)}</ul>:null}
-   {type==='scheme' && <p className="text-sm"><strong>Main benefit · </strong>{scheme.benefit || scheme.benefits_summary || 'Not specified in the official source.'}</p>}
+   {type==='scheme' && (benefit || summary) && <p className="text-sm"><strong>{benefit?'Main benefit':'Summary'} · </strong>{benefit || summary}</p>}
    {scheme.record?.facts?.audience?.[0] && <p className="text-sm"><strong>For · </strong>{scheme.record.facts.audience[0].text}</p>}
    {certificate && <><p className="text-sm"><strong>Issuing authority · </strong>{scheme.department || 'Not specified in the official source.'}</p>{(['fees','processingTime'] as const).map(key=><p className="text-sm" key={key}><strong>{key==='fees'?'Fee':'Processing time'} · </strong>{scheme.record?.facts?.[key]?.[0]?.text || 'Not specified in the official source.'}</p>)}</>}
    {applicableRecord(type) && <p className="text-sm font-semibold">{certificate && scheme.scheme_status==='unknown'?'Application availability: check the official portal':describeStatus(scheme.scheme_status)}</p>}
